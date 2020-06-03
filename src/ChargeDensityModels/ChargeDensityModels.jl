@@ -41,7 +41,7 @@ end
 
 Returns always a fixed charge density.
 """
-struct ConstantChargeDensityModel{T <: SSDFloat} <: AbstractChargeDensityModel{T} 
+struct ConstantChargeDensityModel{T <: SSDFloat} <: AbstractChargeDensityModel{T}
     ρ::T
 end
 
@@ -52,34 +52,36 @@ end
 
 function ChargeDensityModel(T::DataType, t::Val{:linear}, dict::Union{Dict{String, Any}, Dict{Any, Any}}, inputunit_dict::Dict)
     unit_factor::T = 1
-    if haskey(inputunit_dict, "length") 
+    gradient_unit_factor::T = 1
+    if haskey(inputunit_dict, "length")
         lunit = inputunit_dict["length"]
         unit_factor = inv(ustrip(uconvert( internal_length_unit^3, 1 * lunit^3 )))
+        gradient_unit_factor = inv(ustrip(uconvert( internal_length_unit^4, 1 * lunit^4 )))
     end
-    return LinearChargeDensityModel{T}( dict, unit_factor )
+    return LinearChargeDensityModel{T}( dict, unit_factor, gradient_unit_factor )
 end
 
-function LinearChargeDensityModel{T}(dict::Union{Dict{String, Any}, Dict{Any, Any}}, unit_factor::T)::LinearChargeDensityModel{T} where {T <: SSDFloat}
+function LinearChargeDensityModel{T}(dict::Union{Dict{String, Any}, Dict{Any, Any}}, unit_factor::T, gradient_unit_factor::T)::LinearChargeDensityModel{T} where {T <: SSDFloat}
     offsets, gradients = zeros(T,3), zeros(T,3)
-    if haskey(dict, "r")     offsets[1] = geom_round(unit_factor * T(dict["r"]["init"]));     gradients[1] = geom_round(unit_factor * T(dict["r"]["gradient"]))    end
-    if haskey(dict, "phi")   offsets[2] = geom_round(unit_factor * T(dict["phi"]["init"]));   gradients[2] = geom_round(unit_factor * T(dict["phi"]["gradient"]))  end
-    if haskey(dict, "z")     offsets[3] = geom_round(unit_factor * T(dict["z"]["init"]));     gradients[3] = geom_round(unit_factor * T(dict["z"]["gradient"]))    end
-    if haskey(dict, "x")     offsets[1] = geom_round(unit_factor * T(dict["x"]["init"]));     gradients[1] = geom_round(unit_factor * T(dict["x"]["gradient"]))    end
-    if haskey(dict, "y")     offsets[2] = geom_round(unit_factor * T(dict["y"]["init"]));     gradients[2] = geom_round(unit_factor * T(dict["y"]["gradient"]))    end
+    if haskey(dict, "r")     offsets[1] = geom_round(unit_factor * T(dict["r"]["init"]));     gradients[1] = geom_round(gradient_unit_factor * T(dict["r"]["gradient"]))    end
+    #if haskey(dict, "phi")   offsets[2] = geom_round(unit_factor * T(dict["phi"]["init"]));   gradients[2] = geom_round(unit_factor * T(dict["phi"]["gradient"]))  end
+    if haskey(dict, "z")     offsets[3] = geom_round(unit_factor * T(dict["z"]["init"]));     gradients[3] = geom_round(gradient_unit_factor * T(dict["z"]["gradient"]))    end
+    if haskey(dict, "x")     offsets[1] = geom_round(unit_factor * T(dict["x"]["init"]));     gradients[1] = geom_round(gradient_unit_factor * T(dict["x"]["gradient"]))    end
+    if haskey(dict, "y")     offsets[2] = geom_round(unit_factor * T(dict["y"]["init"]));     gradients[2] = geom_round(gradient_unit_factor * T(dict["y"]["gradient"]))    end
     LinearChargeDensityModel{T}( NTuple{3, T}(offsets), NTuple{3, T}(gradients) )
 end
 
 
 function ChargeDensityModel(T::DataType, t::Val{:constant}, dict::Union{Dict{String, Any}, Dict{Any, Any}}, inputunit_dict::Dict)
     unit_factor::T = 1
-    if haskey(inputunit_dict, "length") 
+    if haskey(inputunit_dict, "length")
         lunit = inputunit_dict["length"]
         unit_factor = inv(ustrip(uconvert( internal_length_unit^3, 1 * lunit^3 )))
     end
     return ConstantChargeDensityModel{T}( dict, unit_factor )
 end
 function ConstantChargeDensityModel{T}(dict::Union{Dict{String, Any}, Dict{Any, Any}}, unit_factor::T)::ConstantChargeDensityModel{T} where {T <: SSDFloat}
-    ρ::T = if haskey(dict, "charge_density")   
+    ρ::T = if haskey(dict, "charge_density")
         geom_round(unit_factor * T(dict["charge_density"]))
     else
         T(0)
