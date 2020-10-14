@@ -51,7 +51,6 @@ material_properties[:Co] = (
     ρ = 8.96Unitful.g / (Unitful.ml) # u"g/cm^3" throws warnings in precompilation
 )
 
-
 material_properties[:CdZnTe] = (
     name = "Cadmium zinc telluride",
     E_ionisation = 4.64u"eV",
