@@ -1,4 +1,4 @@
-function get_crosssection_idx_and_value(g::Grid{T, 3, :cylindrical}, r, φ, z)::Tuple{Symbol,Int,T} where {T <: SolidStateDetectors.SSDFloat}
+function get_crosssection_idx_and_value(g::Grid{T, 3, :cylindrical}, r, φ, z)::Tuple{Symbol,Int,T} where {T <: SSDFloat}
 
     cross_section::Symbol, idx::Int = if ismissing(φ) && ismissing(r) && ismissing(z)
         :φ, 1
@@ -11,11 +11,11 @@ function get_crosssection_idx_and_value(g::Grid{T, 3, :cylindrical}, r, φ, z)::
                 φ_rad += g.φ.interval.right - g.φ.interval.left
             end
         end
-        :φ, SolidStateDetectors.searchsortednearest(g.φ, φ_rad)
+        :φ, searchsortednearest(g.φ, φ_rad)
     elseif ismissing(φ) && !ismissing(r) && ismissing(z)
-        :r, SolidStateDetectors.searchsortednearest(g.r, T(r))
+        :r, searchsortednearest(g.r, T(r))
     elseif ismissing(φ) && ismissing(r) && !ismissing(z)
-        :z, SolidStateDetectors.searchsortednearest(g.z, T(z))
+        :z, searchsortednearest(g.z, T(z))
     else
         error(ArgumentError, ": Only one of the keywords `r, φ, z` is allowed.")
     end
@@ -33,9 +33,9 @@ end
 
 
 
-@recipe function f(ep::ElectricPotential{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SolidStateDetectors.SSDFloat}
+@recipe function f(ep::ElectricPotential{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SSDFloat}
 
-    if !(ep.grid[2][end] - ep.grid[2][1] ≈ 2π) ep = SolidStateDetectors.get_2π_potential(ep, n_points_in_φ = 72) end
+    if !(ep.grid[2][end] - ep.grid[2][1] ≈ 2π) ep = get_2π_potential(ep, n_points_in_φ = 72) end
 
     g::Grid{T, 3, :cylindrical} = ep.grid
     cross_section::Symbol, idx::Int, value::T = get_crosssection_idx_and_value(g, r, φ, z)
@@ -47,10 +47,10 @@ end
 end
 
 
-@recipe function f(wp::WeightingPotential{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SolidStateDetectors.SSDFloat}
+@recipe function f(wp::WeightingPotential{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SSDFloat}
 
     if !(wp.grid[2][end] - wp.grid[2][1] ≈ 2π)
-        wp = SolidStateDetectors.get_2π_potential(wp, n_points_in_φ = 72)
+        wp = get_2π_potential(wp, n_points_in_φ = 72)
     end
 
     g::Grid{T, 3, :cylindrical} = wp.grid
@@ -64,10 +64,10 @@ end
 end
 
 
-@recipe function f(ρ::ChargeDensity{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SolidStateDetectors.SSDFloat}
+@recipe function f(ρ::ChargeDensity{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SSDFloat}
 
     if !(ρ.grid[2][end] - ρ.grid[2][1] ≈ 2π)
-        ρ = SolidStateDetectors.get_2π_potential(ρ, n_points_in_φ = 72)
+        ρ = get_2π_potential(ρ, n_points_in_φ = 72)
     end
 
     g::Grid{T, 3, :cylindrical} = ρ.grid
@@ -80,10 +80,10 @@ end
 end
 
 
-@recipe function f(pt::PointTypes{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SolidStateDetectors.SSDFloat}
+@recipe function f(pt::PointTypes{T,3,:cylindrical}; r = missing, φ = missing, z = missing) where {T <: SSDFloat}
 
     if !(pt.grid[2][end] - pt.grid[2][1] ≈ 2π)
-        pt = SolidStateDetectors.get_2π_potential(pt, n_points_in_φ = 72)
+        pt = get_2π_potential(pt, n_points_in_φ = 72)
     end
 
     g::Grid{T, 3, :cylindrical} = pt.grid
@@ -97,9 +97,15 @@ end
 end
 
 
-@recipe function f(sp::ScalarPotential{T,3,:cylindrical}, g::Grid{T, 3, :cylindrical}, cross_section::Symbol, idx::Int, value::T) where{T}
+@recipe function f(sp::ScalarPotential{T,3,:cylindrical}, g::Grid{T, 3, :cylindrical}, cross_section::Symbol, idx::Int, value::T) where {T}
 
     g::Grid{T, 3, :cylindrical} = sp.grid
+    
+    if minimum(sp.data) == maximum(sp.data)
+        #@info "Set colorbar to display heatmap"
+        clims --> (sp.data[1], sp.data[1]+1)
+    end
+    
     @series begin
         seriestype := :heatmap
         foreground_color_border --> nothing
@@ -110,8 +116,8 @@ end
             yguide --> "z / m"
             xlims --> (g.r[1],g.r[end])
             ylims --> (g.z[1],g.z[end])
-            gr_ext::Array{T,1} = midpoints(SolidStateDetectors.get_extended_ticks(g.r))
-            gz_ext::Array{T,1} = midpoints(SolidStateDetectors.get_extended_ticks(g.z))
+            gr_ext::Array{T,1} = midpoints(get_extended_ticks(g.r))
+            gz_ext::Array{T,1} = midpoints(get_extended_ticks(g.z))
             midpoints(gr_ext), midpoints(gz_ext), sp.data[:,idx,:]'
         elseif cross_section == :r
             xguide --> "φ / °"
@@ -127,7 +133,7 @@ end
 
 
 
-@recipe function f(ϵ::DielectricDistribution{T,3,:cylindrical}; φ = 0) where {T <: SolidStateDetectors.SSDFloat}
+@recipe function f(ϵ::DielectricDistribution{T,3,:cylindrical}; φ = 0) where {T <: SSDFloat}
 
     g::Grid{T, 3, :cylindrical} = ϵ.grid
     cross_section::Symbol, idx::Int, value::T = get_crosssection_idx_and_value(g, missing, φ, missing)
@@ -138,9 +144,9 @@ end
     tick_direction --> :out
     title --> "Dielectric Distribution @ $(cross_section) = $(round(value,sigdigits=2))"*(cross_section == :φ ? "°" : "m")
 
-    gr_ext::Array{T,1} = midpoints(SolidStateDetectors.get_extended_ticks(g.r))
-    gφ_ext::Array{T,1} = midpoints(SolidStateDetectors.get_extended_ticks(g.φ))
-    gz_ext::Array{T,1} = midpoints(SolidStateDetectors.get_extended_ticks(g.z))
+    gr_ext::Array{T,1} = midpoints(get_extended_ticks(g.r))
+    gφ_ext::Array{T,1} = midpoints(get_extended_ticks(g.φ))
+    gz_ext::Array{T,1} = midpoints(get_extended_ticks(g.z))
 
     @series begin
         if cross_section == :φ
