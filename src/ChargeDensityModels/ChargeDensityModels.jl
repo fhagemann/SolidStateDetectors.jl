@@ -41,7 +41,7 @@ end
 
 Returns always a fixed charge density.
 """
-struct ConstantChargeDensityModel{T <: SSDFloat} <: AbstractChargeDensityModel{T} 
+struct ConstantChargeDensityModel{T <: SSDFloat} <: AbstractChargeDensityModel{T}
     ρ::T
 end
 
@@ -74,14 +74,14 @@ end
 
 function ChargeDensityModel(T::DataType, t::Val{:constant}, dict::Union{Dict{String, Any}, Dict{Any, Any}}, inputunit_dict::Dict)
     unit_factor::T = 1
-    if haskey(inputunit_dict, "length") 
+    if haskey(inputunit_dict, "length")
         lunit = inputunit_dict["length"]
         unit_factor = inv(ustrip(uconvert( internal_length_unit^3, 1 * lunit^3 )))
     end
     return ConstantChargeDensityModel{T}( dict, unit_factor )
 end
 function ConstantChargeDensityModel{T}(dict::Union{Dict{String, Any}, Dict{Any, Any}}, unit_factor::T)::ConstantChargeDensityModel{T} where {T <: SSDFloat}
-    ρ::T = if haskey(dict, "charge_density")   
+    ρ::T = if haskey(dict, "charge_density")
         geom_round(unit_factor * T(dict["charge_density"]))
     else
         T(0)
