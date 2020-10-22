@@ -72,7 +72,7 @@ function iscolinear(l1::AbstractLine{T, 3, :cartesian}, l2::AbstractLine{T, 3, :
 end
 
 
-#=
+
 # Plot Recipes:
 @recipe function f(l::AbstractLine{T, 3, :cartesian}) where {T}
     x::Vector{T} = [l.org.x, l.org.x + l.dir.x]
@@ -88,7 +88,7 @@ end
 end
 
 @recipe function f(ls::Array{<:AbstractLine{T, 3, :cartesian}, 1}) where {T}
-    linecolor --> 1
+    seriescolor --> 1
     for l in ls
         @series begin
             label := ""
@@ -100,4 +100,3 @@ end
         [], []
     end
 end
-=#

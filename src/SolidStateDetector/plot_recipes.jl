@@ -1,3 +1,84 @@
+@recipe function f(det::SolidStateDetector{T}; n = 30, φ = missing,
+    seriescolor = missing, label = missing
+    ) where {T}
+
+    clabel = (ismissing(label) ? collect(1:length(det.contacts)) : label)
+    if !(typeof(clabel) <: AbstractArray) clabel = [clabel] end
+    ccolor = (ismissing(seriescolor) ? collect(1:length(det.contacts)) : seriescolor)
+    if !(typeof(ccolor) <: AbstractArray) ccolor = [ccolor] end
+
+    #3D
+    if ismissing(φ)
+        xguide --> "x / m"
+        yguide --> "y / m"
+        zguide --> "z / m"
+
+        for (cn,contact) in enumerate(det.contacts)
+            linewidth --> 2
+            seriescolor := ccolor[(cn-1)%length(ccolor)+1]
+            @series begin
+                label := ""
+                n --> n
+                contact
+            end
+            @series begin
+                label := clabel[(cn-1)%length(clabel)+1]
+                []
+            end
+        end
+    #=
+    #2D
+    else
+        linewidth := 2
+        aspect_ratio --> 1
+        xguide --> "r / mm"
+        yguide --> "z / mm"
+
+        for (cn, contact) in enumerate(det.contacts)
+             @series begin
+                seriescolor := ccolor[(cn-1)%length(ccolor)+1]
+                label := ""
+                contact, φ
+            end
+        end
+    =#
+    end
+end
+
+
+@recipe function f(contact::Contact{T}; n = 30, seriescolor = :grey) where {T}
+    @series begin
+        seriescolor --> seriescolor
+        label --> "Contact"
+        []
+    end
+    for (cn,c) in enumerate(contact.geometry_positive)
+        @series begin
+            seriescolor := seriescolor
+            label := ""
+            n --> n
+            c
+        end
+    end
+end
+
+
+@recipe function f(contact::Contact{T}, φ::Number; n = 30, seriescolor = :grey) where {T}
+    @series begin
+        seriescolor --> seriescolor
+        label --> "Contact"
+        []
+    end
+    for (cn,c) in enumerate(contact.geometry_positive)
+        @series begin
+            seriescolor := seriescolor
+            label := ""
+            n --> n
+            c, φ
+        end
+    end
+end
+
 #=
 @recipe function f(::Val{:InvertedCoax}, dim::Symbol;
                     r=missing,

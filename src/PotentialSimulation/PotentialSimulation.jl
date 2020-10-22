@@ -14,3 +14,5 @@ include("WeightingPotential.jl")
 include("SimulationAlgorithms/Cylindrical.jl")
 include("SimulationAlgorithms/Cartesian3D.jl")
 include("ConvergenceAndRefinement.jl")
+
+include("plot_recipes.jl")
