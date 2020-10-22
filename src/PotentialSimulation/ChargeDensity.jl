@@ -22,7 +22,7 @@ function NamedTuple(ρ::ChargeDensity{T}) where {T <: SSDFloat}
     )
 end
 Base.convert(T::Type{NamedTuple}, x::ChargeDensity) = T(x)
-    
+
 function ChargeDensity(nt::NamedTuple)
     grid = Grid(nt.grid)
     T = typeof(ustrip(nt.values[1]))
@@ -33,20 +33,20 @@ end
 Base.convert(T::Type{ChargeDensity}, x::NamedTuple) = T(x)
 
 
-
+#=
 @recipe function f( ρ::ChargeDensity{T, 3, :cylindrical};
                     r = missing,
                     φ = missing,
                     z = missing ) where {T}
     g::Grid{T, 3, :cylindrical} = ρ.grid
-   
+
     # seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
     foreground_color_border --> nothing
     tick_direction --> :out
-       
-       
+
+
     cross_section::Symbol, idx::Int = if ismissing(φ) && ismissing(r) && ismissing(z)
         :φ, 1
     elseif !ismissing(φ) && ismissing(r) && ismissing(z)
@@ -68,7 +68,7 @@ Base.convert(T::Type{ChargeDensity}, x::NamedTuple) = T(x)
     end
     value::T = if cross_section == :φ
         g.φ[idx]
-    elseif cross_section == :r    
+    elseif cross_section == :r
         g.r[idx]
     elseif cross_section == :z
         g.z[idx]
@@ -104,14 +104,14 @@ end
                     y = missing,
                     z = missing ) where {T}
     g::Grid{T, 3, :cartesian} = ρ.grid
-   
+
     # seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
     foreground_color_border --> nothing
     tick_direction --> :out
-       
-       
+
+
     cross_section::Symbol, idx::Int = if ismissing(x) && ismissing(y) && ismissing(z)
         :x, 1
     elseif !ismissing(x) && ismissing(y) && ismissing(z)
@@ -155,4 +155,4 @@ end
         end
     end
 end
-
+=#

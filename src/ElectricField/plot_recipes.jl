@@ -12,7 +12,7 @@ end
 function get_xy_magnitude(xyz_vector::AbstractArray)
     sqrt(xyz_vector[1]^2+xyz_vector[2]^2)
 end
-
+#=
 @recipe function f(electrical_field::Array{SVector{3,T},3}, grid::CylindricalGrid{T}; view=:Components, plane=:rz, i_fixed=3, spacing = 8, vectorscale = 0.0018, SI_factor=1/1000.) where{T <: SSDFloat}
 
     vectorfield = electrical_field.*SI_factor
@@ -347,3 +347,4 @@ end
         end
     end
 end
+=#

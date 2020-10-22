@@ -16,7 +16,7 @@ end
 function WeightingPotential(fss::PotentialSimulationSetup{T, 3, :cartesian})::WeightingPotential{T, 3, :cartesian} where {T <: SSDFloat}
     return WeightingPotential{T, 3, :cartesian}(fss.potential, fss.grid)
 end
-
+#=
 @recipe function f( wp::WeightingPotential{T, 3, :cylindrical};
                     r = missing,
                     φ = missing,
@@ -73,6 +73,7 @@ end
         end
     end
 end
+=#
 
 const ScalarPotential{T, N, S} = Union{ElectricPotential{T, N, S}, WeightingPotential{T, N, S}, PointTypes{T, N, S}, ChargeDensity{T, N, S}}
 
@@ -182,7 +183,7 @@ function PointTypes(setup::PotentialSimulationSetup{T, 3, :cylindrical} ; kwargs
     return get_2π_potential(PointTypes{T, 3, :cylindrical}(setup.pointtypes, setup.grid); kwargs...)
 end
 
-
+#=
 @recipe function f( wp::WeightingPotential{T, 3, :cartesian};
                     # dim = missing, dimvalue = missing,
                     x = missing,
@@ -247,3 +248,4 @@ end
         end
     end
 end
+=#

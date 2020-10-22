@@ -14,7 +14,7 @@ end
 function Sphere{T}(dict::Union{Dict{Any, Any}, Dict{String, Any}}, inputunit_dict::Dict{String,Unitful.Units})::Sphere{T} where {T <: SSDFloat}
     translate_vector = _get_translate_vector(T, dict, inputunit_dict)
     org::CartesianPoint{T} = ismissing(translate_vector) ? CartesianPoint{T}(0, 0, 0) : translate_vector
-    r::T = ustrip(uconvert(u"m", dict["r"] * inputunit_dict["length"]))  
+    r::T = ustrip(uconvert(u"m", dict["r"] * inputunit_dict["length"]))
     return Sphere{T}(org, r)
 end
 
@@ -26,6 +26,7 @@ function (+)(s::Sphere{T}, translate::Union{CartesianVector{T}, Missing})::Spher
     return ismissing(translate) ? s : Sphere{T}( s.org +  translate, s.r )
 end
 
+#=
 @recipe function f(s::Sphere{T};) where {T <: SSDFloat}
     @series begin
         pts = []
@@ -55,7 +56,7 @@ end
     end
     @series begin
         pts = []
-        label --> ""      
+        label --> ""
         for φ in range(T(0), length = 36, stop = T(2π))
             pt = s.org + CartesianVector{T}( 0, s.r * cos(φ), s.r * sin(φ) )
             push!(pts, pt)
@@ -67,11 +68,12 @@ end
         lines
     end
 end
+=#
 
 # For proper grid creation we also need the function get_important_points:
 function get_important_points(s::Sphere{T}, ::Val{:r})::Vector{T} where {T <: SSDFloat}
-    v::Vector{T} = geom_round.(T[ s.org.x - s.r, s.org.x, s.org.x + s.r, 
-                                  s.org.y - s.r, s.org.y, s.org.y + s.r ]) 
+    v::Vector{T} = geom_round.(T[ s.org.x - s.r, s.org.x, s.org.x + s.r,
+                                  s.org.y - s.r, s.org.y, s.org.y + s.r ])
     return findall(r -> r >= 0 , v)
 end
 function get_important_points(s::Sphere{T}, ::Val{:φ})::Vector{T} where {T <: SSDFloat}

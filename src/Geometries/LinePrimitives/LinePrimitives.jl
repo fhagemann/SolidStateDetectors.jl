@@ -72,18 +72,18 @@ function iscolinear(l1::AbstractLine{T, 3, :cartesian}, l2::AbstractLine{T, 3, :
 end
 
 
-
+#=
 # Plot Recipes:
 @recipe function f(l::AbstractLine{T, 3, :cartesian}) where {T}
-    x::Vector{T} = [l.org.x, l.org.x + l.dir.x] 
-    y::Vector{T} = [l.org.y, l.org.y + l.dir.y] 
-    z::Vector{T} = [l.org.z, l.org.z + l.dir.z] 
+    x::Vector{T} = [l.org.x, l.org.x + l.dir.x]
+    y::Vector{T} = [l.org.y, l.org.y + l.dir.y]
+    z::Vector{T} = [l.org.z, l.org.z + l.dir.z]
     x, y, z
 end
 
 @recipe function f(l::AbstractLine{T, 2, :cartesian}) where {T}
-    x::Vector{T} = [l.org.x, l.org.x + l.dir.x] 
-    y::Vector{T} = [l.org.y, l.org.y + l.dir.y] 
+    x::Vector{T} = [l.org.x, l.org.x + l.dir.x]
+    y::Vector{T} = [l.org.y, l.org.y + l.dir.y]
     x, y
 end
 
@@ -100,3 +100,4 @@ end
         [], []
     end
 end
+=#

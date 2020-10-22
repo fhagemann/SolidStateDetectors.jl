@@ -1,3 +1,4 @@
+#=
 @recipe function f(Vol::Tube{T}, coloring = missing) where T <: SSDFloat
     rStart = Vol.r_interval.left
     rStop = Vol.r_interval.right
@@ -147,3 +148,4 @@ function partialcircle_3d(radius,phiStart,phiStop,Translate::AbstractVector;nSte
 
     return x,y,z
 end
+=#

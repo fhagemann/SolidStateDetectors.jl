@@ -1,7 +1,7 @@
 """
     const PointType = UInt8
 
-Stores certain information about a grid point via bit-flags. 
+Stores certain information about a grid point via bit-flags.
 
 Right now there are:
 
@@ -10,8 +10,8 @@ Right now there are:
     `const pn_junction_bit = 0x04`
 
 How to get information out of a PointType variable `pt`:
-1. `pt & update_bit == 0` -> do not update this point (for fixed points)     
-2. `pt & update_bit >  0` -> do update this point    
+1. `pt & update_bit == 0` -> do not update this point (for fixed points)
+2. `pt & update_bit >  0` -> do update this point
 3. `pt & undepleted_bit > 0` -> this point is undepleted
 4. `pt & pn_junction_bit > 0` -> this point belongs to the solid state detector. So it is in the volume of the n-type or p-type material.
 """
@@ -46,7 +46,7 @@ function in(pt::AbstractCoordinatePoint{T}, pts::PointTypes{T, 3, S})::Bool wher
     return pts.data[i1, i2, i3] & pn_junction_bit > 0
 end
 
-is_depleted(point_types::PointTypes)::Bool = 
+is_depleted(point_types::PointTypes)::Bool =
     !any(b -> undepleted_bit & b > 0, point_types.data)
 
 
@@ -78,7 +78,7 @@ function get_active_volume(pts::PointTypes{T, 3, :cylindrical}) where {T}
         Δmpr_squared[1] = T(0.5) * (mpr[2]^2)
     end
 
-    isclosed::Bool = typeof(pts.grid.axes[2].interval).parameters[2] == :closed 
+    isclosed::Bool = typeof(pts.grid.axes[2].interval).parameters[2] == :closed
     for iz in eachindex(pts.grid.axes[3])
         if !isclosed || only_2d
             for iφ in eachindex(pts.grid.axes[2])
@@ -137,17 +137,17 @@ Base.convert(T::Type{NamedTuple}, x::PointTypes) = T(x)
 
 
 
-
+#=
 @recipe function f( pts::PointTypes{T, 3, :cylindrical};
                     r = missing,
                     φ = missing,
                     z = missing ) where {T}
     g::Grid{T, 3, :cylindrical} = pts.grid
-   
+
     seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
-    
+
     cross_section::Symbol, idx::Int = if ismissing(φ) && ismissing(r) && ismissing(z)
         :φ, 1
     elseif !ismissing(φ) && ismissing(r) && ismissing(z)
@@ -169,12 +169,12 @@ Base.convert(T::Type{NamedTuple}, x::PointTypes) = T(x)
     end
     value::T = if cross_section == :φ
         g.φ[idx]
-    elseif cross_section == :r    
+    elseif cross_section == :r
         g.r[idx]
     elseif cross_section == :z
         g.z[idx]
     end
-    
+
     @series begin
         clims --> (0, max_pointtype_value)
         if cross_section == :φ
@@ -201,11 +201,11 @@ end
                     y = missing,
                     z = missing ) where {T}
     g::Grid{T, 3, :cartesian} = pts.grid
-   
+
     seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
-    
+
     cross_section::Symbol, idx::Int = if ismissing(x) && ismissing(y) && ismissing(z)
         :x, 1
     elseif !ismissing(x) && ismissing(y) && ismissing(z)
@@ -224,7 +224,7 @@ end
     elseif cross_section == :z
         g.z[idx]
     end
-    
+
     @series begin
         clims --> (0, max_pointtype_value)
         title --> "Point Type Map @$(cross_section) = $(round(value, sigdigits = 2))"
@@ -243,3 +243,4 @@ end
         end
     end
 end
+=#

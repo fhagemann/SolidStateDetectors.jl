@@ -39,7 +39,7 @@ function NamedTuple(ep::ElectricPotential{T, 3}) where {T}
     )
 end
 Base.convert(T::Type{NamedTuple}, x::ElectricPotential) = T(x)
-    
+
 function ElectricPotential(nt::NamedTuple)
     grid = Grid(nt.grid)
     T = typeof(ustrip(nt.values[1]))
@@ -50,7 +50,7 @@ end
 Base.convert(T::Type{ElectricPotential}, x::NamedTuple) = T(x)
 
 
-
+#=
 @recipe function f( ep::ElectricPotential{T, 3, :cartesian};
                     # dim = missing, dimvalue = missing,
                     x = missing,
@@ -58,13 +58,13 @@ Base.convert(T::Type{ElectricPotential}, x::NamedTuple) = T(x)
                     z = missing,
                     contours_equal_potential=false ) where {T}
     g::Grid{T, 3, :cartesian} = ep.grid
-   
+
     seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
     foreground_color_border --> nothing
     tick_direction --> :out
-       
+
     cross_section::Symbol, idx::Int = if ismissing(x) && ismissing(y) && ismissing(z)
         :x, 1
     elseif !ismissing(x) && ismissing(y) && ismissing(z)
@@ -122,13 +122,13 @@ end
                     z = missing,
                     contours_equal_potential=false ) where {T}
     g::Grid{T, 3, :cylindrical} = ep.grid
-   
+
     seriescolor --> :viridis
     st --> :heatmap
     aspect_ratio --> 1
     foreground_color_border --> nothing
     tick_direction --> :out
-       
+
     cross_section::Symbol, idx::Int = if ismissing(φ) && ismissing(r) && ismissing(z)
         :φ, 1
     elseif !ismissing(φ) && ismissing(r) && ismissing(z)
@@ -150,7 +150,7 @@ end
     end
     value::T = if cross_section == :φ
         g.φ[idx]
-    elseif cross_section == :r    
+    elseif cross_section == :r
         g.r[idx]
     elseif cross_section == :z
         g.z[idx]
@@ -189,4 +189,4 @@ end
         end
     end
 end
-
+=#

@@ -95,6 +95,7 @@ end
 
 include("RefineGrid.jl")
 
+#=
 @recipe function f(grid::Grid{T, N, S}) where {T, N, S}
     layout --> N
     st --> :stephist
@@ -109,6 +110,7 @@ include("RefineGrid.jl")
         end
     end
 end
+=#
 
 
 function get_coordinate_system(grid::Grid{T, N, S}) where {T, N, S}
