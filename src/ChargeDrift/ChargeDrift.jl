@@ -46,13 +46,13 @@ function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
 
     drift_path_e::Array{CartesianPoint{T},2} = Array{CartesianPoint{T},2}(undef, n_events, max_nsteps)
     drift_path_h::Array{CartesianPoint{T},2} = Array{CartesianPoint{T},2}(undef, n_events, max_nsteps)
-    timestamps_e::Array{T,2} = Array{T,2}(undef, n_events, max_nsteps)
-    timestamps_h::Array{T,2} = Array{T,2}(undef, n_events, max_nsteps)
+    timestamps_e::Vector{T} = Vector{T}(undef, max_nsteps)
+    timestamps_h::Vector{T} = Vector{T}(undef, max_nsteps)
     n_e::Int = _drift_charge!(drift_path_e, timestamps_e, detector, point_types, grid, starting_points, dt, velocity_field_e, verbose = verbose)
     n_h::Int = _drift_charge!(drift_path_h, timestamps_h, detector, point_types, grid, starting_points, dt, velocity_field_h, verbose = verbose)
     
     for i in eachindex(starting_points)
-        drift_paths[i] = EHDriftPath{T, T}( drift_path_e[i,1:n_e], drift_path_h[i,1:n_h], timestamps_e[i,1:n_e], timestamps_h[i,1:n_h] )
+        drift_paths[i] = EHDriftPath{T, T}( drift_path_e[i,1:n_e], drift_path_h[i,1:n_h], timestamps_e[1:n_e], timestamps_h[1:n_h] )
     end
 
     return drift_paths
@@ -100,16 +100,15 @@ function _set_to_zero_vector!(v::Vector{CartesianVector{T}})::Nothing where {T <
 end
 
 function _add_stepvector_drift!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, 
-        drift_path::Array{CartesianPoint{T},2}, timestamps::Array{T,2}, istep::Int,
-        done::Vector{Bool}, velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3}, Δt::T, det::SolidStateDetector{T, S})::Nothing where {T <: SSDFloat, S}
+        drift_path::Array{CartesianPoint{T},2}, istep::Int, done::Vector{Bool}, velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3}, 
+        Δt::T, det::SolidStateDetector{T, S})::Nothing where {T <: SSDFloat, S}
     for n in eachindex(step_vectors)
         if !done[n]
             step_vectors[n] += get_velocity_vector(velocity_field, _convert_vector(current_pos[n], Val(S))) * Δt
             if is_zero_vector(geom_round.(step_vectors[n]))
                 done[n] = true
-                drift_path[n,istep] = drift_path[n,istep-1] + step_vectors[n]
-                timestamps[n,istep] = timestamps[n,istep-1] + Δt
-                fill_timestamps!(drift_path, timestamps, istep, n)
+                current_pos[n] += step_vectors[n]
+                drift_path[n,istep] = current_pos[n]
             end
         end
     end
@@ -142,20 +141,11 @@ function _modulate_driftvector!(step_vectors::Vector{CartesianVector{T}}, curren
 end
 
 
-function fill_timestamps!(drift_path::Array{CartesianPoint{T},2}, timestamps::Array{T,2}, istep::Int, n::Int)::Nothing where {T <: SSDFloat}
-    for i in istep+1:size(timestamps,2)
-        drift_path[n,i] = drift_path[n,istep]
-        timestamps[n,i] = timestamps[n,istep]
-    end
-    nothing
-end
-
-
 function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}}, 
             current_pos::Vector{CartesianPoint{T}},
             done::Vector{Bool},
             drift_path::Array{CartesianPoint{T},2},
-            timestamps::Array{T,2},
+            timestamps::Vector{T},
             istep::Int,
             det::SolidStateDetector{T, S},
             g::Grid{T, 3, S},
@@ -164,28 +154,27 @@ function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}},
             Δt::T,
             verbose::Bool
         )::Nothing where {T <: SSDFloat, S}
+
+    normal::Vector{Bool} = map(n -> done[n] || _is_next_point_in_det(current_pos[n]+step_vectors[n], CylindricalPoint(current_pos[n]+step_vectors[n]), det, point_types), eachindex(step_vectors))
     
-    #check for each new position if it is still inside and if not: correct or end the drift
-    for n in eachindex(current_pos)
-        if _is_next_point_in_det(current_pos[n]+step_vectors[n], CylindricalPoint(current_pos[n]+step_vectors[n]), det, point_types)
-            current_pos[n] += step_vectors[n]
-            drift_path[n,istep] = current_pos[n]
-            timestamps[n,istep] = timestamps[n,istep-1] + Δt
-        else
+    if all(normal)
+        #all charges are either finished or still inside the detector => drift normally
+        current_pos .+= step_vectors
+        drift_path[:,istep] .= current_pos
+        timestamps[istep] = timestamps[istep-1] + Δt
+    else
+        #all charges that would not be inside after the drift step
+        for n in findall(.!normal)
             crossing_pos::CartesianPoint{T}, cd_point_type::UInt8, boundary_index::Int, surface_normal::CartesianVector{T} = 
                 get_crossing_pos(det, g, copy(current_pos[n]), current_pos[n] + step_vectors[n])
             if cd_point_type == CD_ELECTRODE
                 done[n] = true
-                current_pos[n] = crossing_pos
                 drift_path[n,istep] = crossing_pos
-                timestamps[n,istep] = timestamps[n,istep-1] + Δt
-                fill_timestamps!(drift_path, timestamps, istep, n)
+                timestamps[istep] = timestamps[istep-1] + Δt      
             elseif cd_point_type == CD_FLOATING_BOUNDARY
                 projected_vector::CartesianVector{T} = CartesianVector{T}(project_to_plane(step_vectors[n], surface_normal))
                 projected_vector = modulate_surface_drift(projected_vector)
                 next_pos::CartesianPoint{T} = current_pos[n] + projected_vector
-                
-                # ToDo: We actually need a time array as well to do this properly...
                 small_projected_vector = projected_vector * T(0.001)
                 i::Int = 0
                 while i < 1000 && !(next_pos in det)
@@ -194,20 +183,22 @@ function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}},
                 end
                 if i == 1000 && verbose @warn("Handling of charge at floating boundary did not work as intended. Start Position (Cart): $(startpos[n])") end
                 drift_path[n,istep] = next_pos
-                timestamps[n,istep] = timestamps[n,istep-1] + Δt * (1 - i * T(0.001))
-                if is_zero_vector(geom_round.(next_pos - current_pos[n]))
-                    done[n] = true
-                    fill_timestamps!(drift_path, timestamps, istep-1, n)
-                end
+                step_vectors *= (1 - i * T(0.001))  # scale down the step_vectors for all other charge clouds
+                Δt *= (1 - i * T(0.001))            # scale down Δt for all charge clouds
+                done[n] = is_zero_vector(geom_round.(next_pos - current_pos[n]))
                 current_pos[n] = next_pos
-            else # elseif cd_point_type == CD_OUTSIDE or CD_BULK
+            else # if cd_point_type == CD_BULK or CD_OUTSIDE
                 if verbose @warn ("Internal error for charge starting at $(startpos[n])") end
                 done[n] = true
-                drift_path[n,istep] = crossing_pos
-                timestamps[n,istep] = timestamps[n,istep-1] + Δt
-                fill_timestamps!(drift_path, timestamps, istep-1, n)
-            end
+                drift_path[n,istep] = current_pos[n]
+                timestamps[istep] = timestamps[istep-1] + Δt
+            end  
         end
+        #drift all other charge clouds normally according to the new Δt_min
+        for n in findall(normal)
+            current_pos[n] += step_vectors[n]
+            drift_path[n,istep] = current_pos[n]
+        end 
     end
     nothing
 end
@@ -221,7 +212,7 @@ Before calling this function one should check that `startpos` is inside `det`: `
 """
 function _drift_charge!(
                             drift_path::Array{CartesianPoint{T},2},
-                            timestamps::Array{T,2},
+                            timestamps::Vector{T},
                             det::SolidStateDetector{T, S},
                             point_types::PointTypes{T, 3, S},
                             g::Grid{T, 3, S},
@@ -233,7 +224,7 @@ function _drift_charge!(
     
     n_hits::Int = length(startpos)
     drift_path[:,1] = startpos
-    timestamps[:,1] .= T(0)
+    timestamps[1] = T(0)
     max_nsteps::Int = size(drift_path,2)
     
     last_real_step_index::Int = 1
@@ -244,7 +235,7 @@ function _drift_charge!(
     for istep in 2:max_nsteps
         last_real_step_index += 1
         _set_to_zero_vector!(step_vectors)
-        _add_stepvector_drift!(step_vectors, current_pos, drift_path, timestamps, istep, done, velocity_field, Δt, det)
+        _add_stepvector_drift!(step_vectors, current_pos, drift_path, istep, done, velocity_field, Δt, det)
         _add_stepvector_diffusion!(step_vectors, current_pos)
         _add_stepvector_selfrepulsion!(step_vectors, current_pos)
         _modulate_driftvector!(step_vectors, current_pos, det.virtual_drift_volumes)
