@@ -43,7 +43,7 @@ in(evt::Event, simulation::Simulation) = all( pt -> pt in simulation.detector, e
 
 
 function drift_charges!(event::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
-    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
+    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), event.energies, Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
     nothing
 end
 function get_signal!(event::Event{T}, sim::Simulation{T}, contact_id::Int; Δt::RealQuantity = 5u"ns")::Nothing where {T <: SSDFloat}

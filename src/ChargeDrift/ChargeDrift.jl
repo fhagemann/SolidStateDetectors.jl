@@ -35,7 +35,7 @@ end
 
 
 function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point_types::PointTypes{T, 3},
-                        starting_points::Vector{CartesianPoint{T}},
+                        starting_points::Vector{CartesianPoint{T}}, energies::Vector{T},
                         velocity_field_e::Interpolations.Extrapolation{<:SVector{3}, 3},
                         velocity_field_h::Interpolations.Extrapolation{<:SVector{3}, 3},
                         Δt::RQ; max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
@@ -48,8 +48,8 @@ function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
     drift_path_h::Array{CartesianPoint{T},2} = Array{CartesianPoint{T},2}(undef, n_events, max_nsteps)
     timestamps_e::Vector{T} = Vector{T}(undef, max_nsteps)
     timestamps_h::Vector{T} = Vector{T}(undef, max_nsteps)
-    n_e::Int = _drift_charge!(drift_path_e, timestamps_e, detector, point_types, grid, starting_points, dt, velocity_field_e, verbose = verbose)
-    n_h::Int = _drift_charge!(drift_path_h, timestamps_h, detector, point_types, grid, starting_points, dt, velocity_field_h, verbose = verbose)
+    n_e::Int = _drift_charge!(drift_path_e, timestamps_e, detector, point_types, grid, starting_points, energies, dt, velocity_field_e, verbose = verbose)
+    n_h::Int = _drift_charge!(drift_path_h, timestamps_h, detector, point_types, grid, starting_points, energies, dt, velocity_field_h, verbose = verbose)
     
     for i in eachindex(starting_points)
         drift_paths[i] = EHDriftPath{T, T}( drift_path_e[i,1:n_e], drift_path_h[i,1:n_h], timestamps_e[1:n_e], timestamps_h[1:n_h] )
@@ -217,6 +217,7 @@ function _drift_charge!(
                             point_types::PointTypes{T, 3, S},
                             g::Grid{T, 3, S},
                             startpos::Vector{CartesianPoint{T}},
+                            energies::Vector{T},
                             Δt::T,
                             velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3};
                             verbose::Bool = true
