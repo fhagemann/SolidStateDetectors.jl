@@ -649,10 +649,10 @@ function get_interpolated_drift_field(ef::ElectricField)
 end
 
 function drift_charges( sim::Simulation{T}, starting_positions::Vector{CartesianPoint{T}}, energies::Vector{T};
-                        Δt::RealQuantity = 5u"ns", max_nsteps::Int = 1000, verbose::Bool = true )::Vector{EHDriftPath{T}} where {T <: SSDFloat}
+                        diffusion::Bool = false, self_repulsion::Bool = false, Δt::RealQuantity = 5u"ns", max_nsteps::Int = 1000, verbose::Bool = true )::Vector{EHDriftPath{T}} where {T <: SSDFloat}
     return _drift_charges(   sim.detector, sim.point_types.grid, sim.point_types, starting_positions, energies,
                              get_interpolated_drift_field(sim.electric_field), sim.charge_drift_model, 
-                             Δt, max_nsteps = max_nsteps, verbose = verbose)::Vector{EHDriftPath{T}}
+                             Δt, diffusion, self_repulsion, max_nsteps = max_nsteps, verbose = verbose)::Vector{EHDriftPath{T}}
 end
 
 function get_signal(sim::Simulation{T}, drift_paths::Vector{EHDriftPath{T}}, energy_depositions::Vector{T}, contact_id::Int; Δt::TT = T(5) * u"ns") where {T <: SSDFloat, TT}

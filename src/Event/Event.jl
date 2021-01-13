@@ -42,8 +42,8 @@ in(evt::Event, detector::SolidStateDetector) = all( pt -> pt in detector, evt.lo
 in(evt::Event, simulation::Simulation) = all( pt -> pt in simulation.detector, evt.locations)
 
 
-function drift_charges!(event::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
-    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), event.energies, Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
+function drift_charges!(event::Event{T}, sim::Simulation{T}; diffusion::Bool = false, self_repulsion::Bool = false, max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
+    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), event.energies, diffusion = diffusion, self_repulsion = self_repulsion, Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
     nothing
 end
 function get_signal!(event::Event{T}, sim::Simulation{T}, contact_id::Int; Δt::RealQuantity = 5u"ns")::Nothing where {T <: SSDFloat}
@@ -75,8 +75,8 @@ end
     end
 end
 
-function simulate!(event::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
-    drift_charges!(event, sim, max_nsteps = max_nsteps, Δt = Δt, verbose = verbose)
+function simulate!(event::Event{T}, sim::Simulation{T}; diffusion::Bool = false, self_repulsion::Bool = false, max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
+    drift_charges!(event, sim, diffusion = diffusion, self_repulsion = self_repulsion, max_nsteps = max_nsteps, Δt = Δt, verbose = verbose)
     get_signals!(event, sim, Δt = Δt)
     nothing
 end

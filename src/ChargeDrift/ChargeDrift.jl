@@ -38,7 +38,8 @@ function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
                         starting_points::Vector{CartesianPoint{T}}, energies::Vector{T},
                         electric_field::Interpolations.Extrapolation{<:SVector{3}, 3},
                         cdm::AbstractChargeDriftModel{T},
-                        Δt::RQ; max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
+                        Δt::RQ, diffusion::Bool = false, self_repulsion::Bool = false; 
+                        max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
 
     drift_paths::Vector{EHDriftPath{T}} = Vector{EHDriftPath{T}}(undef, length(starting_points))
     n_events::Int = length(starting_points)
@@ -48,8 +49,8 @@ function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
     drift_path_h::Array{CartesianPoint{T},2} = Array{CartesianPoint{T},2}(undef, n_events, max_nsteps)
     timestamps_e::Vector{T} = Vector{T}(undef, max_nsteps)
     timestamps_h::Vector{T} = Vector{T}(undef, max_nsteps)
-    n_e::Int = _drift_charge!(drift_path_e, timestamps_e, detector, point_types, grid, starting_points, energies./T(ustrip(detector.semiconductors[1].material.E_ionisation)), dt, electric_field, cdm, Electron, verbose = verbose)
-    n_h::Int = _drift_charge!(drift_path_h, timestamps_h, detector, point_types, grid, starting_points, energies./T(ustrip(detector.semiconductors[1].material.E_ionisation)), dt, electric_field, cdm, Hole, verbose = verbose)
+    n_e::Int = _drift_charge!(drift_path_e, timestamps_e, detector, point_types, grid, starting_points, energies./T(ustrip(detector.semiconductors[1].material.E_ionisation)), dt, electric_field, cdm, Electron, diffusion, self_repulsion, verbose = verbose)
+    n_h::Int = _drift_charge!(drift_path_h, timestamps_h, detector, point_types, grid, starting_points, energies./T(ustrip(detector.semiconductors[1].material.E_ionisation)), dt, electric_field, cdm, Hole, diffusion, self_repulsion, verbose = verbose)
     
     for i in eachindex(starting_points)
         drift_paths[i] = EHDriftPath{T, T}( drift_path_e[i,1:n_e], drift_path_h[i,1:n_h], timestamps_e[1:n_e], timestamps_h[1:n_h] )
@@ -63,8 +64,9 @@ function _drift_charge( detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
                        velocity_field_e::Interpolations.Extrapolation{SVector{3, T}, 3},
                        velocity_field_h::Interpolations.Extrapolation{SVector{3, T}, 3},
                        cdm::AbstractChargeDriftModel{T},
-                       Δt::RealQuantity, max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat}
-    return _drift_charges(detector, grid, CartesianPoint{T}.(point_types), [starting_point], velocity_field_e, velocity_field_h, cdm, T(Δt.val) * unit(Δt), max_nsteps = max_nsteps, verbose = verbose)
+                       Δt::RealQuantity, diffusion::Bool = false, self_repulsion::Bool = false;
+                       max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat}
+    return _drift_charges(detector, grid, CartesianPoint{T}.(point_types), [starting_point], velocity_field_e, velocity_field_h, cdm, T(Δt.val) * unit(Δt), diffusion, self_repulsion, max_nsteps = max_nsteps, verbose = verbose)
 end
 
 @inline _convert_vector(pt::CartesianPoint, ::Val{:cylindrical}) = CylindricalPoint(pt)
@@ -128,10 +130,12 @@ end
 abstract type Electron end
 abstract type Hole end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, charges::Vector{T}, ϵr::T, ::Type{Electron})::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵr::T, ::Type{Electron})::Nothing where {T <: SSDFloat}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
+        if done[n] continue end
         for m in eachindex(step_vectors)
+            if done[m] continue end
             if m > n
                 direction::CartesianVector{T} = current_pos[n] .- current_pos[m]
                 tmp::T = elementary_charge * inv(4 * pi * ϵ0 * ϵr * sum(direction.^2))
@@ -144,10 +148,12 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 end
 
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, charges::Vector{T}, ϵr::T, ::Type{Hole})::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵr::T, ::Type{Hole})::Nothing where {T <: SSDFloat}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
+        if done[n] continue end
         for m in eachindex(step_vectors)
+            if done[m] continue end
             if m > n
                 direction::CartesianVector{T} = current_pos[n] .- current_pos[m]
                 tmp::T = elementary_charge * inv(4 * pi * ϵ0 * ϵr * sum(direction.^2))
@@ -261,7 +267,9 @@ function _drift_charge!(
                             Δt::T,
                             velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3},
                             cdm::AbstractChargeDriftModel{T},
-                            CC::Type;
+                            CC::Type,
+                            diffusion::Bool = false,
+                            self_repulsion::Bool = false;
                             verbose::Bool = true
                         )::Int where {T <: SSDFloat, S}
     
@@ -280,8 +288,8 @@ function _drift_charge!(
         last_real_step_index += 1
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, drift_path, istep, done, velocity_field, det)
-        _add_fieldvector_diffusion!(step_vectors, current_pos)
-        _add_fieldvector_selfrepulsion!(step_vectors, current_pos, charges, ϵr, CC)
+        if diffusion _add_fieldvector_diffusion!(step_vectors, current_pos) end
+        if self_repulsion _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵr, CC) end
         _modulate_fieldvector!(step_vectors, current_pos, det.virtual_drift_volumes)    
         _get_step_vectors!(step_vectors, Δt, cdm, CC)
         _check_and_update_position!(step_vectors, current_pos, done, drift_path, timestamps, istep, det, g, point_types, startpos, Δt, verbose)
