@@ -59,6 +59,7 @@ function _drift_charges(detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
     return drift_paths
 end
 
+#=
 function _drift_charge( detector::SolidStateDetector{T}, grid::Grid{T, 3}, point_types::PointTypes{T, 3},
                        starting_point::CartesianPoint{<:SSDFloat},
                        velocity_field_e::Interpolations.Extrapolation{SVector{3, T}, 3},
@@ -68,6 +69,7 @@ function _drift_charge( detector::SolidStateDetector{T}, grid::Grid{T, 3}, point
                        max_nsteps::Int = 2000, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat}
     return _drift_charges(detector, grid, CartesianPoint{T}.(point_types), [starting_point], velocity_field_e, velocity_field_h, cdm, T(Δt.val) * unit(Δt), diffusion, self_repulsion, max_nsteps = max_nsteps, verbose = verbose)
 end
+=#
 
 @inline _convert_vector(pt::CartesianPoint, ::Val{:cylindrical}) = CylindricalPoint(pt)
 @inline _convert_vector(pt::CartesianPoint, ::Val{:cartesian}) = pt
@@ -103,8 +105,7 @@ function _set_to_zero_vector!(v::Vector{CartesianVector{T}})::Nothing where {T <
 end
 
 function _add_fieldvector_drift!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, 
-        drift_path::Array{CartesianPoint{T},2}, istep::Int, done::Vector{Bool}, velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3}, 
-        det::SolidStateDetector{T, S})::Nothing where {T <: SSDFloat, S}
+        done::Vector{Bool}, velocity_field::Interpolations.Extrapolation{<:StaticVector{3}, 3}, det::SolidStateDetector{T, S})::Nothing where {T <: SSDFloat, S}
     for n in eachindex(step_vectors)
         if !done[n]
             step_vectors[n] += get_velocity_vector(velocity_field, _convert_vector(current_pos[n], Val(S)))
@@ -118,7 +119,7 @@ function _add_fieldvector_drift!(step_vectors::Vector{CartesianVector{T}}, curre
     nothing
 end
 
-function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, length::T = T(0.5e3))::Nothing where {T <: SSDFloat}
+function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, length::T = T(0.5e3))::Nothing where {T <: SSDFloat}
     for n in eachindex(step_vectors)
         sinθ::T, cosθ::T = sincos(T(rand())*T(2π))
         sinφ::T, cosφ::T = sincos(T(rand())*T(π))
@@ -287,8 +288,8 @@ function _drift_charge!(
     for istep in 2:max_nsteps
         last_real_step_index += 1
         _set_to_zero_vector!(step_vectors)
-        _add_fieldvector_drift!(step_vectors, current_pos, drift_path, istep, done, velocity_field, det)
-        if diffusion _add_fieldvector_diffusion!(step_vectors, current_pos) end
+        _add_fieldvector_drift!(step_vectors, current_pos, done, velocity_field, det)
+        if diffusion _add_fieldvector_diffusion!(step_vectors) end
         if self_repulsion _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵr, CC) end
         _modulate_fieldvector!(step_vectors, current_pos, det.virtual_drift_volumes)    
         _get_step_vectors!(step_vectors, Δt, cdm, CC)
