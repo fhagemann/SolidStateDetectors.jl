@@ -95,7 +95,7 @@ end
 end
 
 
-is_zero_vector(v::CartesianVector{T}) where {T <: SSDFloat} = (v == CartesianVector{T}(0,0,0))
+is_approx_zero_vector(v::CartesianVector{T}) where {T <: SSDFloat} = all(abs.(v) .<= geom_atol_zero(T))
 
 function _set_to_zero_vector!(v::Vector{CartesianVector{T}})::Nothing where {T <: SSDFloat}
     for n in eachindex(v)
@@ -109,10 +109,8 @@ function _add_fieldvector_drift!(step_vectors::Vector{CartesianVector{T}}, curre
     for n in eachindex(step_vectors)
         if !done[n]
             step_vectors[n] += get_velocity_vector(velocity_field, _convert_vector(current_pos[n], Val(S)))
-            if is_zero_vector(geom_round.(step_vectors[n]))
+            if is_approx_zero_vector(step_vectors[n])
                 done[n] = true
-                #current_pos[n] += step_vectors[n]
-                #drift_path[n,istep] = current_pos[n]
             end
         end
     end
@@ -235,7 +233,7 @@ function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}},
                 drift_path[n,istep] = next_pos
                 step_vectors *= (1 - i * T(0.001))  # scale down the step_vectors for all other charge clouds
                 Δt *= (1 - i * T(0.001))            # scale down Δt for all charge clouds
-                done[n] = is_zero_vector(geom_round.(next_pos - current_pos[n]))
+                done[n] = is_approx_zero_vector(next_pos - current_pos[n])
                 current_pos[n] = next_pos
             else # if cd_point_type == CD_BULK or CD_OUTSIDE
                 if verbose @warn ("Internal error for charge starting at $(startpos[n])") end
