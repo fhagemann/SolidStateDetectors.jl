@@ -109,11 +109,11 @@ function _add_fieldvector_drift!(step_vectors::Vector{CartesianVector{T}}, curre
     for n in eachindex(step_vectors)
         if !done[n]
             step_vectors[n] += get_velocity_vector(velocity_field, _convert_vector(current_pos[n], Val(S)))
-            #if is_zero_vector(geom_round.(step_vectors[n]))
-            #    done[n] = true
-            #    current_pos[n] += step_vectors[n]
-            #    drift_path[n,istep] = current_pos[n]
-            #end
+            if is_zero_vector(geom_round.(step_vectors[n]))
+                done[n] = true
+                #current_pos[n] += step_vectors[n]
+                #drift_path[n,istep] = current_pos[n]
+            end
         end
     end
     nothing
@@ -191,6 +191,7 @@ end
 function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}}, 
             current_pos::Vector{CartesianPoint{T}},
             done::Vector{Bool},
+            normal::Vector{Bool},
             drift_path::Array{CartesianPoint{T},2},
             timestamps::Vector{T},
             istep::Int,
@@ -202,7 +203,9 @@ function _check_and_update_position!(step_vectors::Vector{CartesianVector{T}},
             verbose::Bool
         )::Nothing where {T <: SSDFloat, S}
 
-    normal::Vector{Bool} = map(n -> done[n] || _is_next_point_in_det(current_pos[n]+step_vectors[n], CylindricalPoint(current_pos[n]+step_vectors[n]), det, point_types), eachindex(step_vectors))
+    for n in eachindex(normal)
+        normal[n] = done[n] || _is_next_point_in_det(current_pos[n]+step_vectors[n], CylindricalPoint(current_pos[n]+step_vectors[n]), det, point_types)
+    end
     
     if all(normal)
         #all charges are either finished or still inside the detector => drift normally
@@ -284,6 +287,7 @@ function _drift_charge!(
     current_pos::Vector{CartesianPoint{T}} = copy(startpos) # copy is needed to prevent overwriting startpos
     step_vectors::Vector{CartesianVector{T}} = Vector{CartesianVector{T}}(undef, n_hits)
     done::Vector{Bool} = fill(false, n_hits)
+    normal::Vector{Bool} = fill(false, n_hits)
     
     for istep in 2:max_nsteps
         last_real_step_index += 1
@@ -293,7 +297,7 @@ function _drift_charge!(
         if self_repulsion _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵr, CC) end
         _modulate_fieldvector!(step_vectors, current_pos, det.virtual_drift_volumes)    
         _get_step_vectors!(step_vectors, Δt, cdm, CC)
-        _check_and_update_position!(step_vectors, current_pos, done, drift_path, timestamps, istep, det, g, point_types, startpos, Δt, verbose)
+        _check_and_update_position!(step_vectors, current_pos, done, normal, drift_path, timestamps, istep, det, g, point_types, startpos, Δt, verbose)
         if all(done) break end
     end
     last_real_step_index
