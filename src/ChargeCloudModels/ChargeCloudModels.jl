@@ -1,16 +1,21 @@
 abstract type AbstractChargeCloud end
 
-struct PointCharge{T <: SSDFloat, S} <: AbstractChargeCloud 
-    charge::T
-    pos::AbstractCoordinatePoint{T, 3, S}
-end
-
-struct NBodyChargeCloud{T <: SSDFloat, S} <: AbstractChargeCloud 
-    # To be done...
-end
-
-struct Tetrahedron{T}
+struct NBodyChargeCloud{T} <: AbstractChargeCloud
     points::Vector{CartesianPoint{T}}
+    charges::Vector{T}
+    shell_structure::Vector{Type{<:AbstractChargeCloud}}
+end
+
+struct PointCharge{T} <: AbstractChargeCloud
+    points::SVector{1, CartesianPoint{T}}
+end
+
+function PointCharge(center::Vector{CartesianPoint{T}}, length::T = T(0)) where {T} 
+    PointCharge{T}(center)
+end
+
+struct Tetrahedron{T} <: AbstractChargeCloud
+    points::SVector{4, CartesianPoint{T}}
 end
 
 function Tetrahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
@@ -21,8 +26,8 @@ function Tetrahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
     Tetrahedron{T}( points )
 end
 
-struct Hexahedron{T}
-    points::Vector{CartesianPoint{T}}
+struct Hexahedron{T} <: AbstractChargeCloud
+    points::SVector{8, CartesianPoint{T}}
 end
 
 function Hexahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
@@ -37,8 +42,8 @@ function Hexahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
     Hexahedron{T}( points )
 end
 
-struct Octahedron{T}
-    points::Vector{CartesianPoint{T}}
+struct Octahedron{T} <: AbstractChargeCloud
+    points::SVector{6, CartesianPoint{T}}
 end
 
 function Octahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
@@ -53,8 +58,8 @@ function Octahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
     Octahedron{T}( points )
 end
 
-struct Dodecahedron{T}
-    points::Vector{CartesianPoint{T}}
+struct Dodecahedron{T} <: AbstractChargeCloud
+    points::SVector{20, CartesianPoint{T}}
 end
 
 function Dodecahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
@@ -78,8 +83,8 @@ function Dodecahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
     Dodecahedron{T}( points )
 end
 
-struct Icosahedron{T}
-    points::Vector{CartesianPoint{T}}
+struct Icosahedron{T} <: AbstractChargeCloud
+    points::SVector{12, CartesianPoint{T}}
 end
 
 function Icosahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
@@ -95,3 +100,26 @@ function Icosahedron(center::CartesianPoint{T}, length::T = T(1)) where {T}
 end
 
 include("plot_recipes.jl")
+include("ParticleTypes.jl")
+
+
+function create_charge_cloud(center::CartesianPoint{T}, charge::T, particle_type::Type{PT} = Gamma;
+        radius::T = radius_guess(charge, particle_type), number_of_shells::Int = 2, shell_structure = Dodecahedron
+    )::NBodyChargeCloud{T} where {T, PT <: ParticleType}
+    
+    points::Vector{CartesianPoint{T}} = CartesianPoint{T}[center]
+    charges::Vector{T} = T[charge]
+    shell_structures::Vector{Type} = [PointCharge{T}]
+    
+    n_shell = 1
+    while n_shell <= number_of_shells
+        shell = shell_structure(center, n_shell * radius).points
+        points = vcat(points, shell)
+        charges = vcat(charges, [exp(-n_shell^2 / 2) for i in 1:length(shell)])
+        push!(shell_structures, shell_structure{T})
+        n_shell += 1
+    end
+    return NBodyChargeCloud{T}( points, charges./sum(charges) * charge, shell_structures )
+end
+
+

@@ -117,8 +117,9 @@ function _add_fieldvector_drift!(step_vectors::Vector{CartesianVector{T}}, curre
     nothing
 end
 
-function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, length::T = T(0.5e3))::Nothing where {T <: SSDFloat}
+function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, done::Vector{Bool}, length::T = T(0.5e3))::Nothing where {T <: SSDFloat}
     for n in eachindex(step_vectors)
+        if done[n] continue end
         sinθ::T, cosθ::T = sincos(T(rand())*T(2π))
         sinφ::T, cosφ::T = sincos(T(rand())*T(π))
         step_vectors[n] += CartesianVector{T}( length * cosφ * sinθ, length * sinφ * sinθ, length * cosθ )
@@ -291,7 +292,7 @@ function _drift_charge!(
         last_real_step_index += 1
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, done, velocity_field, det)
-        if diffusion _add_fieldvector_diffusion!(step_vectors) end
+        if diffusion _add_fieldvector_diffusion!(step_vectors, done) end
         if self_repulsion _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵr, CC) end
         _modulate_fieldvector!(step_vectors, current_pos, det.virtual_drift_volumes)    
         _get_step_vectors!(step_vectors, Δt, cdm, CC)

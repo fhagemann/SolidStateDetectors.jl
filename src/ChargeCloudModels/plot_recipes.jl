@@ -1,3 +1,17 @@
+@recipe function f(t::PointCharge{T}) where {T}
+
+    seriescolor --> :blue
+    
+    @series begin
+        seriescolor --> seriescolor
+        seriestype --> :scatter
+        markersize --> 6
+        label --> "PointCharge"
+        t.points
+    end
+end
+
+
 @recipe function f(t::Tetrahedron{T}; connect = true) where {T}
     
     linestyle --> :dot
@@ -252,3 +266,39 @@ end
     end
 end
 
+
+get_vertices(::Type{PointCharge{T}}) where {T} = 1
+get_vertices(::Type{Tetrahedron{T}}) where {T} = 4
+get_vertices(::Type{Hexahedron{T}}) where {T} = 8
+get_vertices(::Type{Octahedron{T}}) where {T} = 6
+get_vertices(::Type{Dodecahedron{T}}) where {T} = 20
+get_vertices(::Type{Icosahedron{T}}) where {T} = 12
+
+
+@recipe function f(nbc::NBodyChargeCloud{T}, connect = true) where {T}
+    
+    seriescolor --> :blue
+    markersize --> 10
+    
+    @series begin
+        seriescolor --> seriescolor
+        seriestype --> :scatter
+        markersize --> markersize
+        markerstrokewidth --> 0
+        label --> "NBodyChargeCloud"
+        []
+    end
+    
+    points = nbc.points
+    vertex_no = 0
+    for (shell, shell_structure) in enumerate(nbc.shell_structure)
+        vertices = get_vertices(shell_structure)
+        @series begin
+            markersize --> markersize * exp(-(shell - 1))
+            label --> ""
+            seriescolor --> seriescolor
+            shell_structure(points[vertex_no+1:vertex_no+vertices])
+        end
+        vertex_no += vertices
+    end
+end
