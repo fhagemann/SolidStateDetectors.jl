@@ -275,10 +275,9 @@ get_vertices(::Type{Dodecahedron{T}}) where {T} = 20
 get_vertices(::Type{Icosahedron{T}}) where {T} = 12
 
 
-@recipe function f(nbc::NBodyChargeCloud{T}, connect = true) where {T}
+@recipe function f(nbc::NBodyChargeCloud{T}, connect = true, markersize = 10) where {T}
     
     seriescolor --> :blue
-    markersize --> 10
     
     @series begin
         seriescolor --> seriescolor
