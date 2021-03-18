@@ -2,7 +2,7 @@ abstract type AbstractChargeCloud end
 
 struct NBodyChargeCloud{T} <: AbstractChargeCloud
     points::Vector{CartesianPoint{T}}
-    charges::Vector{T}
+    energies::Vector{T}
     shell_structure::Vector{Type{<:AbstractChargeCloud}}
 end
 
@@ -103,23 +103,23 @@ include("plot_recipes.jl")
 include("ParticleTypes.jl")
 
 
-function create_charge_cloud(center::CartesianPoint{T}, charge::T, particle_type::Type{PT} = Gamma;
-        radius::T = radius_guess(charge, particle_type), number_of_shells::Int = 2, shell_structure = Dodecahedron
+function create_charge_cloud(center::CartesianPoint{T}, energy::T, particle_type::Type{PT} = Gamma;
+        radius::T = radius_guess(energy, particle_type), number_of_shells::Int = 2, shell_structure = Dodecahedron
     )::NBodyChargeCloud{T} where {T, PT <: ParticleType}
     
     points::Vector{CartesianPoint{T}} = CartesianPoint{T}[center]
-    charges::Vector{T} = T[charge]
+    energies::Vector{T} = T[1]
     shell_structures::Vector{Type} = [PointCharge{T}]
     
     n_shell = 1
     while n_shell <= number_of_shells
         shell = shell_structure(center, n_shell * radius).points
         points = vcat(points, shell)
-        charges = vcat(charges, [exp(-n_shell^2 / 2) for i in 1:length(shell)])
+        energies = vcat(energies, [exp(-n_shell^2 / 2) for i in 1:length(shell)])
         push!(shell_structures, shell_structure{T})
         n_shell += 1
     end
-    return NBodyChargeCloud{T}( points, charges./sum(charges) * charge, shell_structures )
+    return NBodyChargeCloud{T}( points, energies./sum(energies) * energy, shell_structures )
 end
 
 
