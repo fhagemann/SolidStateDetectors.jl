@@ -25,7 +25,7 @@ function parse_config_file(filename::AbstractString)::Dict{Any,Any}
     if endswith(filename, ".toml")
         error("Currently only .json and .yaml files are supported.")
     elseif endswith(filename, ".json")
-        data = JSON.parsefile(filename)
+        parsed_dict = JSON.parsefile(filename)
         scan_and_merge_included_json_files!(parsed_dict, filename)
     elseif endswith(filename, ".yaml")
         parsed_dict = YAML.load_file(filename)
