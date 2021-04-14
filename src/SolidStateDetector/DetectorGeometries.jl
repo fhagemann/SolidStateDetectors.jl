@@ -113,7 +113,7 @@ end
 
 
 function SolidStateDetector{T}(filename::AbstractString)::SolidStateDetector{T} where {T <: SSDFloat}
-    parsed_dict = parse_config_file(filename)
+    parsed_dict = JSON.parse_config_file(filename)
     return SolidStateDetector{T}(parsed_dict)
 end
 
