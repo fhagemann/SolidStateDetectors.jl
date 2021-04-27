@@ -20,6 +20,14 @@ function Event(locations::Vector{<:AbstractCoordinatePoint{T}}, energies::Vector
     return evt
 end
 
+function Event(nbcc::NBodyChargeCloud{T})::Event{T} where {T <: SSDFloat}
+    evt = Event{T}()
+    evt.locations = nbcc.points
+    evt.energies = nbcc.energies
+    evt.waveforms = missing
+    return evt
+end
+
 function Event(evt::NamedTuple{(:evtno, :detno, :thit, :edep, :pos),
          <:Tuple{
             Union{Integer, AbstractVector{<:Integer}},
@@ -42,8 +50,10 @@ in(evt::Event, detector::SolidStateDetector) = all( pt -> pt in detector, evt.lo
 in(evt::Event, simulation::Simulation) = all( pt -> pt in simulation.detector, evt.locations)
 
 
-function drift_charges!(event::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
-    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
+function drift_charges!(event::Event{T}, sim::Simulation{T}; #diffusion::Bool = false, self_repulsion::Bool = false, 
+    max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
+    event.drift_paths = drift_charges(sim, CartesianPoint.(event.locations), event.energies, #diffusion = diffusion, self_repulsion = self_repulsion, 
+        Δt = Δt, max_nsteps = max_nsteps, verbose = verbose)
     nothing
 end
 function get_signal!(event::Event{T}, sim::Simulation{T}, contact_id::Int; Δt::RealQuantity = 5u"ns")::Nothing where {T <: SSDFloat}
@@ -69,8 +79,16 @@ function get_signals!(event::Event{T}, sim::Simulation{T}; Δt::RealQuantity = 5
     nothing
 end
 
-function simulate!(event::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
-    drift_charges!(event, sim, max_nsteps = max_nsteps, Δt = Δt, verbose = verbose)
+@recipe function f(wvs::Vector{Union{Missing, RadiationDetectorSignals.RDWaveform}})
+    @series begin
+        RadiationDetectorSignals.RDWaveform[wv for wv in skipmissing(wvs)]
+    end
+end
+
+function simulate!(event::Event{T}, sim::Simulation{T}; #diffusion::Bool = false, self_repulsion::Bool = false, 
+    max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", verbose::Bool = true)::Nothing where {T <: SSDFloat}
+    drift_charges!(event, sim, #diffusion = diffusion, self_repulsion = self_repulsion, 
+        max_nsteps = max_nsteps, Δt = Δt, verbose = verbose)
     get_signals!(event, sim, Δt = Δt)
     nothing
 end
