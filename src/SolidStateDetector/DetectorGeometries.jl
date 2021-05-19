@@ -488,13 +488,13 @@ function Grid(  detector::SolidStateDetector{T, Cylindrical};
 
     push!(important_r_points, detector.world.intervals[1].left)
     push!(important_r_points, detector.world.intervals[1].right)
-    important_r_points = unique!(sort!(geom_round.(important_r_points)))
+    unique!(sort!(important_r_points))
     push!(important_z_points, detector.world.intervals[3].left)
     push!(important_z_points, detector.world.intervals[3].right)
-    important_z_points = unique!(sort!(geom_round.(important_z_points)))
+    unique!(sort!(important_z_points))
     push!(important_φ_points, detector.world.intervals[2].left)
     push!(important_φ_points, detector.world.intervals[2].right)
-    important_φ_points = unique!(sort!(geom_round.(important_φ_points)))
+    unique!(sort!(important_φ_points))
 
     # r
     L, R, BL, BR = get_boundary_types(detector.world.intervals[1])
