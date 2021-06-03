@@ -120,41 +120,24 @@ function get_world_limits_from_objects(::Type{Cartesian}, s::Semiconductor{T}, c
     return ax1l, ax1r, ax2l, ax2r, ax3l, ax3r
 end
 
-function SolidStateDetector{T}(config_file::Dict, input_units::NamedTuple)::SolidStateDetector{T} where {T <: SSDFloat}
-    contacts::Vector{Contact{T}}, passives::Vector{Passive{T}} = [], []
-    virtual_drift_volumes::Vector{AbstractVirtualVolume{T}} = []
-
-    if haskey(config_file, "detectors")
-        config_detector = config_file["detectors"][1] # still only one detector
-        
-        transformation_keys = filter(k -> k in ("translate", "rotate"), keys(config_detector))
-        transformations::Vector{CSGTransformation} = broadcast(t -> parse_CSG_transformation(T, config_detector, CSG_dict[t], input_units), transformation_keys)
-        
-        @assert haskey(config_detector, "bulk") "Each detector needs an entry `bulk`. Please define the bulk."      
-        semiconductor = construct_semiconductor(T, config_detector["bulk"], input_units, transformations)
-
-        if haskey(config_detector, "contacts")              
-            contacts = broadcast(c -> construct_contact(T, c, input_units, transformations), config_detector["contacts"])
-        end
-        if haskey(config_detector, "passives")              
-            passives = broadcast(p -> construct_passive(T, p, input_units, transformations), config_detector["passives"])
-        end
-        if haskey(config_detector, "virtual_drift_volumes")  
-            virtual_drift_volumes = broadcast(v -> construct_virtual_volume(T, v, input_units, transformations), config_detector["virtual_drift_volumes"]) 
-        end
-    end
-
-    c = SolidStateDetector{T}()
-    c.name = haskey(config_file, "name") ? config_file["name"] : "NoNameDetector"
-    c.semiconductor = semiconductor
-    c.contacts = contacts
-    c.passives = passives
-    c.virtual_drift_volumes = virtual_drift_volumes
-    return c
+function construct_detectors(T, config_file::Dict, input_units::NamedTuple)::Vector{SolidStateDetector{T}}
+    @assert haskey(config_file, "detectors") "Config file needs field `detectors`."
+    @assert isa(config_file["detectors"], Array) "The field `detectors` needs to be an array of detectors."
+    if length(config_file["detectors"]) == 0 return [SolidStateDetector{T}()] end
+    [ SolidStateDetector{T}(config_detector, input_units) for config_detector in config_file["detectors"] ]
 end
 
-function SolidStateDetector(parsed_dict::Dict)
-    SolidStateDetector{Float32}(parsed_dict)
+function SolidStateDetector{T}(config_detector::Dict, input_units::NamedTuple) where {T <: SSDFloat}
+    c = SolidStateDetector{T}()
+    c.name = haskey(config_detector, "name") ? config_detector["name"] : "NoNameDetector"
+    transformation_keys = filter(k -> k in ("translate", "rotate"), keys(config_detector))
+    transformations::Vector{CSGTransformation} = broadcast(t -> parse_CSG_transformation(T, config_detector, CSG_dict[t], input_units), transformation_keys)
+    @assert haskey(config_detector, "bulk") "Each detector needs an entry `bulk`. Please define the bulk for $(c.name)."      
+    c.semiconductor = construct_semiconductor(T, config_detector["bulk"], input_units, transformations)
+    haskey(config_detector, "contacts") ? c.contacts = broadcast(c -> construct_contact(T, c, input_units, transformations), config_detector["contacts"]) : nothing
+    haskey(config_detector, "passives") ? c.passives = broadcast(p -> construct_passive(T, p, input_units, transformations), config_detector["passives"]) : nothing
+    haskey(config_detector, "virtual_drift_volumes") ? c.virtual_drift_volumes = broadcast(v -> construct_virtual_volume(T, v, input_units, transformations), config_detector["virtual_drift_volumes"]) : nothing
+    c
 end
 
 function Base.sort!(v::AbstractVector{<:AbstractGeometry})

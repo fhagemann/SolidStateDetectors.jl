@@ -9,7 +9,7 @@ mutable struct Simulation{T <: SSDFloat, CS <: AbstractCoordinateSystem} <: Abst
     config_dict::Dict
     input_units::NamedTuple
     medium::NamedTuple # this should become a struct at some point
-    detector::Union{SolidStateDetector{T}, Missing}
+    detectors::Vector{SolidStateDetector{T}}
     world::World{T, 3, CS}
     q_eff_imp::Union{EffectiveChargeDensity{T}, Missing} # Effective charge coming from the impurites of the semiconductors
     q_eff_fix::Union{EffectiveChargeDensity{T}, Missing} # Fixed charge coming from fixed space charges, e.g. charged up surface layers
@@ -22,12 +22,17 @@ mutable struct Simulation{T <: SSDFloat, CS <: AbstractCoordinateSystem} <: Abst
     hole_drift_field::Union{ElectricField{T}, Missing}
 end
 
+# still allow the old syntax: sim.detector will return the first entry of detectors (or missing if no detector is defined)
+Base.getproperty(sim::Simulation, key::Symbol) = getproperty(sim, Val{key}())
+Base.getproperty(sim::Simulation, ::Val{K}) where K = getfield(sim, K)
+Base.getproperty(sim::Simulation, ::Val{:detector}) = length(sim.detectors) > 0 ? sim.detectors[1] : missing
+
 function Simulation{T,CS}() where {T <: SSDFloat, CS <: AbstractCoordinateSystem}
     Simulation{T, CS}(
         Dict(),
         default_unit_tuple(),
         material_properties[materials["vacuum"]],
-        SolidStateDetector{T}(),
+        [],
         World(CS,(T(0),T(1),T(0),T(1),T(0),T(1))),
         missing,
         missing,
@@ -152,7 +157,7 @@ function Simulation{T}(parsed_dict::Dict)::Simulation{T} where {T <: SSDFloat}
     sim.config_dict = parsed_dict
     sim.input_units = construct_units(parsed_dict)
     sim.medium = material_properties[materials[haskey(parsed_dict, "medium") ? parsed_dict["medium"] : "vacuum"]]
-    sim.detector = SolidStateDetector{T}(parsed_dict, sim.input_units) 
+    sim.detectors = construct_detectors(T, parsed_dict, sim.input_units) 
     sim.world = if haskey(parsed_dict, "grid") && isa(parsed_dict["grid"], Dict)
             World(T, parsed_dict["grid"], sim.input_units)
         else let ssd = sim.detector 
