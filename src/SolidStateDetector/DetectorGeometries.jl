@@ -268,19 +268,21 @@ function get_charge_density(p::Passive{T}, pt::AbstractCoordinatePoint{T})::T wh
     get_charge_density(p.charge_density_model, pt)
 end
 
-function get_ρ_and_ϵ(pt::AbstractCoordinatePoint{T}, ssd::SolidStateDetector{T}, medium::NamedTuple = material_properties[materials["vacuum"]])::Tuple{T, T, T} where {T <: SSDFloat}
+function get_ρ_and_ϵ(pt::AbstractCoordinatePoint{T}, sim::Simulation{T})::Tuple{T, T, T} where {T <: SSDFloat}
     ρ_semiconductor::T = 0
     q_eff_fix::T = 0
-    ϵ::T = medium.ϵ_r
-    if pt in ssd.semiconductor
-        ρ_semiconductor = get_charge_density(ssd.semiconductor, pt) 
-        ϵ = ssd.semiconductor.material.ϵ_r
-    elseif in(pt, ssd.passives)
-        for ep in ssd.passives
-            if pt in ep
-                q_eff_fix = get_charge_density(ep, pt)
-                ϵ = ep.material.ϵ_r
-                break
+    ϵ::T = sim.medium.ϵ_r
+    for ssd in sim.detectors
+        if pt in ssd.semiconductor
+            ρ_semiconductor = get_charge_density(ssd.semiconductor, pt) 
+            ϵ = ssd.semiconductor.material.ϵ_r
+        elseif in(pt, ssd.passives)
+            for ep in ssd.passives
+                if pt in ep
+                    q_eff_fix = get_charge_density(ep, pt)
+                    ϵ = ep.material.ϵ_r
+                    break
+                end
             end
         end
     end
@@ -353,7 +355,7 @@ function set_pointtypes_and_fixed_potentials!(pointtypes::Array{PointType, N}, p
 end
 
 function set_pointtypes_and_fixed_potentials!(pointtypes::Array{PointType, N}, potential::Array{T, N},
-    grid::Grid{T, N, Cartesian}, ssd::SolidStateDetector{T}; weighting_potential_contact_id::Union{Missing, Int} = missing)::Nothing where {T <: SSDFloat, N}
+    grid::Grid{T, N, Cartesian}, sim::Simulation{T}; weighting_potential_contact_id::Union{Missing, Int} = missing)::Nothing where {T <: SSDFloat, N}
 
     channels::Array{Int, 1} = if !ismissing(weighting_potential_contact_id)
         [weighting_potential_contact_id]
@@ -372,45 +374,48 @@ function set_pointtypes_and_fixed_potentials!(pointtypes::Array{PointType, N}, p
             for ix in axes(potential, 1)
                 x::T = axx[ix]
                 pt::CartesianPoint{T} = CartesianPoint{T}( x, y, z )
-
-                for passive in ssd.passives
-                    if passive.potential != :floating
-                        if pt in passive
+                for ssd in sim.detectors
+                    for passive in ssd.passives
+                        if passive.potential != :floating
+                            if pt in passive
+                                potential[ ix, iy, iz ] = if ismissing(weighting_potential_contact_id)
+                                    passive.potential
+                                else
+                                    0
+                                end
+                                pointtypes[ ix, iy, iz ] = zero(PointType)
+                            end
+                        end
+                    end
+                    if in(pt, ssd)
+                        pointtypes[ ix, iy, iz ] += pn_junction_bit
+                    end
+                    for contact in ssd.contacts
+                        if pt in contact
                             potential[ ix, iy, iz ] = if ismissing(weighting_potential_contact_id)
-                                passive.potential
+                                contact.potential
                             else
-                                0
+                                contact.id == weighting_potential_contact_id ? 1 : 0
                             end
                             pointtypes[ ix, iy, iz ] = zero(PointType)
                         end
                     end
                 end
-                if in(pt, ssd)
-                    pointtypes[ ix, iy, iz ] += pn_junction_bit
-                end
-                for contact in ssd.contacts
-                    if pt in contact
-                        potential[ ix, iy, iz ] = if ismissing(weighting_potential_contact_id)
-                            contact.potential
-                        else
-                            contact.id == weighting_potential_contact_id ? 1 : 0
-                        end
-                        pointtypes[ ix, iy, iz ] = zero(PointType)
-                    end
-                end
             end
         end
     end
-    for contact in ssd.contacts
-        pot::T = if ismissing(weighting_potential_contact_id)
-            contact.potential
-        else
-            contact.id == weighting_potential_contact_id ? 1 : 0
-        end
-        contact_gridpoints = paint_object(contact, grid)
-        for gridpoint in contact_gridpoints
-            potential[ gridpoint... ] = pot
-            pointtypes[ gridpoint... ] = zero(PointType)
+    for ssd in sim.detectors
+        for contact in ssd.contacts
+            pot::T = if ismissing(weighting_potential_contact_id)
+                contact.potential
+            else
+                contact.id == weighting_potential_contact_id ? 1 : 0
+            end
+            contact_gridpoints = paint_object(contact, grid)
+            for gridpoint in contact_gridpoints
+                potential[ gridpoint... ] = pot
+                pointtypes[ gridpoint... ] = zero(PointType)
+            end
         end
     end
     nothing

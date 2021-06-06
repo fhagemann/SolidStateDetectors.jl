@@ -1,4 +1,4 @@
-function PotentialSimulationSetupRB(ssd::SolidStateDetector{T}, grid::Grid{T, 3, Cartesian}, medium::NamedTuple = material_properties[materials["vacuum"]],
+function PotentialSimulationSetupRB(sim::Simulation{T}, grid::Grid{T, 3, Cartesian},
                 potential_array::Union{Missing, Array{T, 3}} = missing; weighting_potential_contact_id::Union{Missing, Int} = missing,
                 sor_consts::T = T(1)) where {T}#::PotentialSimulationSetupRB{T} where {T}
                 is_weighting_potential::Bool = !ismissing(weighting_potential_contact_id)
@@ -85,9 +85,7 @@ function PotentialSimulationSetupRB(ssd::SolidStateDetector{T}, grid::Grid{T, 3,
                                                                 (grid_boundary_factor_z_left, grid_boundary_factor_z_right))
         end
 
-        # detector_material_ϵ_r::T = ssd.material_detector.ϵ_r
-        # environment_material_ϵ_r::T = ssd.material_environment.ϵ_r
-
+        ssd = sim.detector
         contact_bias_voltages::Vector{T} = if length(ssd.contacts) > 0 
             T[contact.potential for contact in ssd.contacts]
         else
@@ -109,7 +107,7 @@ function PotentialSimulationSetupRB(ssd::SolidStateDetector{T}, grid::Grid{T, 3,
                 for ix in 1:size(ϵ, 1)
                     pos_x = mpx[ix]
                     pt::CartesianPoint{T} = CartesianPoint{T}(pos_x, pos_y, pos_z)
-                    ρ_tmp[ix, iy, iz]::T, ϵ[ix, iy, iz]::T, q_eff_fix_tmp[ix, iy, iz]::T = get_ρ_and_ϵ(pt, ssd, medium)
+                    ρ_tmp[ix, iy, iz]::T, ϵ[ix, iy, iz]::T, q_eff_fix_tmp[ix, iy, iz]::T = get_ρ_and_ϵ(pt, sim)
                 end
             end
         end
@@ -206,7 +204,7 @@ function PotentialSimulationSetupRB(ssd::SolidStateDetector{T}, grid::Grid{T, 3,
 
         potential::Array{T, 3} = ismissing(potential_array) ? zeros(T, size(grid)...) : potential_array
         pointtypes::Array{PointType, 3} = ones(PointType, size(grid)...)
-        set_pointtypes_and_fixed_potentials!( pointtypes, potential, grid, ssd, weighting_potential_contact_id = weighting_potential_contact_id  )
+        set_pointtypes_and_fixed_potentials!( pointtypes, potential, grid, sim, weighting_potential_contact_id = weighting_potential_contact_id  )
         rbpotential::Array{T, 4}  = RBExtBy2Array( potential, grid )
         rbpointtypes::Array{T, 4} = RBExtBy2Array( pointtypes, grid )
         potential = clear(potential)

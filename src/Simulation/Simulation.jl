@@ -392,7 +392,7 @@ It overwrites `sim.electric_potential`, `sim.q_eff_imp`, `sim.q_eff_fix`, `sim.Ï
 """
 function apply_initial_state!(sim::Simulation{T}, ::Type{ElectricPotential}, grid::Grid{T} = Grid(sim))::Nothing where {T <: SSDFloat}
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim)} =
-        PotentialSimulationSetupRB(sim.detector, grid, sim.medium);
+        PotentialSimulationSetupRB(sim, grid);
 
     sim.q_eff_imp = EffectiveChargeDensity(EffectiveChargeDensityArray(fssrb), grid)
     sim.q_eff_fix = EffectiveChargeDensity(FixedEffectiveChargeDensityArray(fssrb), grid)
@@ -410,7 +410,7 @@ It overwrites `sim.weighting_potentials[contact_id]`.
 """
 function apply_initial_state!(sim::Simulation{T}, ::Type{WeightingPotential}, contact_id::Int, grid::Grid{T} = Grid(sim))::Nothing where {T <: SSDFloat}
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim)} =
-        PotentialSimulationSetupRB(sim.detector, grid, sim.medium, weighting_potential_contact_id = contact_id);
+        PotentialSimulationSetupRB(sim, grid, weighting_potential_contact_id = contact_id);
 
     sim.weighting_potentials[contact_id] = WeightingPotential(ElectricPotentialArray(fssrb), grid)
     nothing
@@ -441,7 +441,7 @@ function update_till_convergence!( sim::Simulation{T,CS},
     only_2d::Bool = length(sim.electric_potential.grid.axes[2]) == 1
 
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.electric_potential.grid)} =
-        PotentialSimulationSetupRB(sim.detector, sim.electric_potential.grid, sim.medium, sim.electric_potential.data, sor_consts = T.(sor_consts))
+        PotentialSimulationSetupRB(sim, sim.electric_potential.grid, sim.electric_potential.data, sor_consts = T.(sor_consts))
 
     cf::T = _update_till_convergence!( fssrb, T(convergence_limit);
                                        only2d = Val{only_2d}(),
@@ -532,7 +532,7 @@ function update_till_convergence!( sim::Simulation{T, CS},
 
     only_2d::Bool = length(sim.weighting_potentials[contact_id].grid.axes[2]) == 1
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.weighting_potentials[contact_id].grid)} =
-        PotentialSimulationSetupRB(sim.detector, sim.weighting_potentials[contact_id].grid, sim.medium, sim.weighting_potentials[contact_id].data,
+        PotentialSimulationSetupRB(sim, sim.weighting_potentials[contact_id].grid, sim.weighting_potentials[contact_id].data,
                 sor_consts = T.(sor_consts), weighting_potential_contact_id = contact_id)
 
     cf::T = _update_till_convergence!( fssrb, T(convergence_limit);
@@ -562,7 +562,7 @@ function refine!(sim::Simulation{T}, ::Type{ElectricPotential},
 
     if update_other_fields
         fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.electric_potential.grid)} =
-            PotentialSimulationSetupRB(sim.detector, sim.electric_potential.grid, sim.medium, sim.electric_potential.data)
+            PotentialSimulationSetupRB(sim, sim.electric_potential.grid, sim.electric_potential.data)
 
         sim.q_eff_imp = EffectiveChargeDensity(EffectiveChargeDensityArray(fssrb), sim.electric_potential.grid)
         sim.q_eff_fix = EffectiveChargeDensity(FixedEffectiveChargeDensityArray(fssrb), sim.electric_potential.grid)

@@ -48,6 +48,18 @@
     end
 end
 
+@recipe function f(dets::Vector{SolidStateDetector{T}}; SSD_style = :wireframe, n = 30, φ = missing, seriescolor = missing, label = missing, alpha_factor = 1) where {T}
+    for det in dets
+        @series begin
+            label := ""
+            n --> n
+            SSD_style --> SSD_style
+            alpha_factor --> alpha_factor
+            det
+        end
+    end
+end
+
 
 @recipe function f(contact::Contact{T}; SSD_style = :wireframe, n = 30, seriescolor = missing, world_size = missing, alpha_factor = 1) where {T}
     ccolor = (ismissing(seriescolor) ? contact.id : seriescolor)
