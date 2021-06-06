@@ -6,6 +6,7 @@ abstract type AbstractSimulation{T <: SSDFloat} end
 Collection of all parts of a Simulation of a Solid State Detector.
 """
 mutable struct Simulation{T <: SSDFloat, CS <: AbstractCoordinateSystem} <: AbstractSimulation{T}
+    name::String # optional
     config_dict::Dict
     input_units::NamedTuple
     medium::NamedTuple # this should become a struct at some point
@@ -29,6 +30,7 @@ Base.getproperty(sim::Simulation, ::Val{:detector}) = length(sim.detectors) > 0 
 
 function Simulation{T,CS}() where {T <: SSDFloat, CS <: AbstractCoordinateSystem}
     Simulation{T, CS}(
+        "NoNameSimulation",
         Dict(),
         default_unit_tuple(),
         material_properties[materials["vacuum"]],
@@ -105,7 +107,10 @@ Base.convert(T::Type{Simulation}, x::NamedTuple) = T(x)
 function println(io::IO, sim::Simulation{T}) where {T <: SSDFloat}
     println(typeof(sim)) # " - Coordinate system: ", get_coordinate_system(sim))
     println("  Environment Material: $(sim.medium.name)")
-    println("  Detector: $(sim.detector.name)")
+    println("  Detectors:")
+    for (i,detector) in enumerate(sim.detectors)
+        println("    Detector $(i): $(detector.name)")
+    end
     println("  Electric potential: ", !ismissing(sim.electric_potential) ? size(sim.electric_potential) : missing)
     println("  Charge density: ", !ismissing(sim.q_eff_imp) ? size(sim.q_eff_imp) : missing)
     println("  Fix Charge density: ", !ismissing(sim.q_eff_fix) ? size(sim.q_eff_fix) : missing)
@@ -113,16 +118,19 @@ function println(io::IO, sim::Simulation{T}) where {T <: SSDFloat}
     println("  Point types: ", !ismissing(sim.point_types) ? size(sim.point_types) : missing)
     println("  Electric field: ", !ismissing(sim.electric_field) ? size(sim.electric_field) : missing)
     println("  Weighting potentials: ")
-    for contact in sim.detector.contacts
-        print("    Contact $(contact.id): ")
-        println(!ismissing(sim.weighting_potentials[contact.id]) ? size(sim.weighting_potentials[contact.id]) : missing)
+    for (i,detector) in enumerate(sim.detectors)
+        println("    Detector $(i): $(detector.name)")
+        for contact in detector.contacts
+            print("       Contact $(contact.id): ")
+            println(!ismissing(sim.weighting_potentials[contact.id]) ? size(sim.weighting_potentials[contact.id]) : missing)
+        end
     end
     println("  Electron drift field: ", !ismissing(sim.electron_drift_field) ? size(sim.electron_drift_field) : missing)
     println("  Hole drift field: ", !ismissing(sim.hole_drift_field) ? size(sim.hole_drift_field) : missing)
 end
 
 function print(io::IO, sim::Simulation{T}) where {T <: SSDFloat}
-    print(io, "Simulation{$T} - ", "$(sim.detector.name)")
+    print(io, "Simulation{$T} - ", "$(sim.name)")
 end
 
 function show(io::IO, sim::Simulation{T}) where {T <: SSDFloat} println(io, sim) end
@@ -154,18 +162,22 @@ function Simulation{T}(parsed_dict::Dict)::Simulation{T} where {T <: SSDFloat}
         end
     end
     sim::Simulation{T,CS} = Simulation{T,CS}()
+    if haskey(parsed_dict, "name") sim.name = parsed_dict["name"] end
     sim.config_dict = parsed_dict
     sim.input_units = construct_units(parsed_dict)
     sim.medium = material_properties[materials[haskey(parsed_dict, "medium") ? parsed_dict["medium"] : "vacuum"]]
     sim.detectors = construct_detectors(T, parsed_dict, sim.input_units) 
     sim.world = if haskey(parsed_dict, "grid") && isa(parsed_dict["grid"], Dict)
             World(T, parsed_dict["grid"], sim.input_units)
-        else let ssd = sim.detector 
-            world_limits = get_world_limits_from_objects(CS, ssd.semiconductor, ssd.contacts, ssd.passives)
+        else let d = sim.detectors # update this!
+            world_limits = get_world_limits_from_objects(CS, 
+                vcat(broadcast(ssd -> ssd.semiconductor, d)...),
+                vcat(broadcast(ssd -> ssd.contacts, d)...), 
+                vcat(broadcast(ssd -> ssd.passives, d)...))
             World(CS, world_limits)
         end
     end
-    sim.weighting_potentials = Missing[ missing for i in 1:length(sim.detector.contacts)]
+    sim.weighting_potentials = Missing[ missing for detector in sim.detectors for i in eachindex(detector.contacts)]
     return sim
 end
 
@@ -210,7 +222,7 @@ function Grid(  sim::Simulation{T, Cylindrical};
         missing, false
     end
     
-    samples::Vector{CylindricalPoint{T}} = sample(sim.detector, Cylindrical)
+    samples::Vector{CylindricalPoint{T}} = vcat(broadcast(d -> sample(d, Cylindrical), sim.detectors)...)
    
     important_r_points::Vector{T} = map(p -> p.r, samples)
     important_φ_points::Vector{T} = map(p -> p.φ, samples)
@@ -316,7 +328,7 @@ function Grid(  sim::Simulation{T, Cartesian};
         init_grid_size::NTuple{3, Int} = NTuple{3, T}( [init_grid_size_1, init_grid_size_2, init_grid_size_3] )
     end
 
-    samples::Vector{CartesianPoint{T}} = sample(sim.detector, Cartesian)
+    samples::Vector{CartesianPoint{T}} = vcat(broadcast(d -> sample(d, Cartesian), sim.detectors)...)
     
     important_x_points::Vector{T} = geom_round.(map(p -> p.x, samples))
     important_y_points::Vector{T} = geom_round.(map(p -> p.y, samples))
