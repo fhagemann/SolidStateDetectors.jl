@@ -6,6 +6,14 @@ end
     return wp(p.r, p.φ, p.z)::T
 end
 
+@inline function get_interpolation(wp::Interpolations.Extrapolation{T, 3}, pt::CylindricalPoint{T}, S::Val{:cartesian})::T where {T <: SSDFloat}
+    p::CartesianPoint = CartesianPoint(pt)
+    return wp(p.x, p.y, p.z)::T
+end
+@inline function get_interpolation(wp::Interpolations.Extrapolation{T, 3}, pt::CylindricalPoint{T}, S::Val{:cylindrical})::T where {T <: SSDFloat}
+    return wp(pt.r, pt.φ, pt.z)::T
+end
+
 
 function add_signal!(signal::AbstractVector{T}, timestamps::AbstractVector{T}, path::Vector{CartesianPoint{T}}, pathtimestamps::AbstractVector{T}, charge::T, 
                         wp::Interpolations.Extrapolation{T, 3}, S::Union{Val{:cylindrical}, Val{:cartesian}})::Nothing where {T <: SSDFloat}
