@@ -1,7 +1,9 @@
-function PotentialSimulationSetupRB(ssd::SolidStateDetector{T, :cartesian}, grid::Grid{T, 3, :cartesian} = Grid(ssd),
+function PotentialSimulationSetupRB(sim::Simulation{T}, grid::Grid{T, 3, :cartesian} = Grid(sim.detector),
                 potential_array::Union{Missing, Array{T, 3}} = missing; weighting_potential_contact_id::Union{Missing, Int} = missing,
                 sor_consts::T = T(1)) where {T}#::PotentialSimulationSetupRB{T} where {T}
                 is_weighting_potential::Bool = !ismissing(weighting_potential_contact_id)
+                
+    ssd = sim.detector
 
     @inbounds begin
         begin # Geometrical weights of the Axes

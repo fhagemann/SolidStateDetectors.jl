@@ -1,4 +1,4 @@
-function PotentialSimulationSetupRB(ssd::SolidStateDetector{T, :cylindrical}, grid::Grid{T, 3, :cylindrical} = Grid(ssd),
+function PotentialSimulationSetupRB(sim::Simulation{T}, grid::Grid{T, 3, :cylindrical} = Grid(sim.detector),
                 potential_array::Union{Missing, Array{T, 3}} = missing; sor_consts = (1.0, 1.0),
                 weighting_potential_contact_id::Union{Missing, Int} = missing
                 )::PotentialSimulationSetupRB{T} where {T}
@@ -7,6 +7,7 @@ function PotentialSimulationSetupRB(ssd::SolidStateDetector{T, :cylindrical}, gr
     @assert grid.axes[1][1] == 0 "Something is wrong. R-axis has `:r0`-boundary handling but first tick is $(axr[1]) and not 0."
 
     is_weighting_potential::Bool = !ismissing(weighting_potential_contact_id)
+    ssd = sim.detector
 
     @inbounds begin
         begin # Geometrical weights of the Axes
@@ -289,7 +290,7 @@ function PotentialSimulationSetupRB(ssd::SolidStateDetector{T, :cylindrical}, gr
 
         potential::Array{T, 3} = ismissing(potential_array) ? zeros(T, size(grid)...) : potential_array
         pointtypes::Array{PointType, 3} = ones(PointType, size(grid)...)
-        set_pointtypes_and_fixed_potentials!( pointtypes, potential, grid, ssd, weighting_potential_contact_id = weighting_potential_contact_id  )
+        set_pointtypes_and_fixed_potentials!( pointtypes, potential, grid, sim, weighting_potential_contact_id = weighting_potential_contact_id  )
         rbpotential::Array{T, 4}  = RBExtBy2Array( potential, grid )
         rbpointtypes::Array{T, 4} = RBExtBy2Array( pointtypes, grid )
         potential = clear(potential)

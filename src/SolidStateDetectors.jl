@@ -75,18 +75,21 @@ include("SolidStateDetector/DetectorGeometries.jl")
 include("GeometryRounding.jl")
 
 include("PotentialSimulation/PotentialSimulation.jl")
-
 include("ElectricField/ElectricField.jl")
-
 include("ChargeDriftModels/ChargeDriftModels.jl")
 include("ChargeCloudModels/ChargeCloudModels.jl")
 include("ChargeDrift/ChargeDrift.jl")
 include("SignalGeneration/SignalGeneration.jl")
+include("Simulation/Simulation.jl")
+
+#include("PotentialSimulation/PotentialSimulationSetups/PotentialSimulationSetupRBCartesian3D.jl")
+include("PotentialSimulation/PotentialSimulationSetups/PotentialSimulationSetupRBCylindrical.jl")
+
 
 include("ChargeStatistics/ChargeStatistics.jl")
 include("ChargeClustering/ChargeClustering.jl")
 
-include("Simulation/Simulation.jl")
+
 include("Event/Event.jl")
 include("MCEventsProcessing/MCEventsProcessing.jl")
 

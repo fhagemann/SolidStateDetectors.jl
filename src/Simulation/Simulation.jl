@@ -150,7 +150,7 @@ It overwrites `sim.electric_potential`, `sim.ρ`, `sim.ρ_fix`, `sim.ϵ` and `si
 """
 function apply_initial_state!(sim::Simulation{T}, ::Type{ElectricPotential}, grid::Grid{T} = Grid(sim.detector))::Nothing where {T <: SSDFloat}
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.detector)} =
-        PotentialSimulationSetupRB(sim.detector, grid);
+        PotentialSimulationSetupRB(sim, grid);
 
     sim.ρ = EffectiveChargeDensity(EffectiveChargeDensityArray(fssrb), grid)
     sim.ρ_fix = EffectiveChargeDensity(FixedEffectiveChargeDensityArray(fssrb), grid)
@@ -168,7 +168,7 @@ It overwrites `sim.weighting_potentials[contact_id]`.
 """
 function apply_initial_state!(sim::Simulation{T}, ::Type{WeightingPotential}, contact_id::Int, grid::Grid{T} = Grid(sim.detector))::Nothing where {T <: SSDFloat}
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.detector)} =
-        PotentialSimulationSetupRB(sim.detector, grid, weighting_potential_contact_id = contact_id);
+        PotentialSimulationSetupRB(sim, grid, weighting_potential_contact_id = contact_id);
 
     sim.weighting_potentials[contact_id] = WeightingPotential(ElectricPotentialArray(fssrb), grid)
     nothing
@@ -200,7 +200,7 @@ function update_till_convergence!( sim::Simulation{T},
     only_2d::Bool = length(sim.electric_potential.grid.axes[2]) == 1
 
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.electric_potential.grid)} =
-        PotentialSimulationSetupRB(sim.detector, sim.electric_potential.grid, sim.electric_potential.data, sor_consts = T.(sor_consts))
+        PotentialSimulationSetupRB(sim, sim.electric_potential.grid, sim.electric_potential.data, sor_consts = T.(sor_consts))
 
     cf::T = _update_till_convergence!( fssrb, T(convergence_limit);
                                        only2d = Val{only_2d}(),
@@ -292,7 +292,7 @@ function update_till_convergence!( sim::Simulation{T},
 
     only_2d::Bool = length(sim.weighting_potentials[contact_id].grid.axes[2]) == 1
     fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.weighting_potentials[contact_id].grid)} =
-        PotentialSimulationSetupRB(sim.detector, sim.weighting_potentials[contact_id].grid, sim.weighting_potentials[contact_id].data,
+        PotentialSimulationSetupRB(sim, sim.weighting_potentials[contact_id].grid, sim.weighting_potentials[contact_id].data,
                 sor_consts = T.(sor_consts), weighting_potential_contact_id = contact_id)
 
     cf::T = _update_till_convergence!( fssrb, T(convergence_limit);
@@ -322,7 +322,7 @@ function refine!(sim::Simulation{T}, ::Type{ElectricPotential},
 
     if update_other_fields
         fssrb::PotentialSimulationSetupRB{T, 3, 4, get_coordinate_system(sim.electric_potential.grid)} =
-            PotentialSimulationSetupRB(sim.detector, sim.electric_potential.grid, sim.electric_potential.data)
+            PotentialSimulationSetupRB(sim, sim.electric_potential.grid, sim.electric_potential.data)
 
         sim.ρ = EffectiveChargeDensity(EffectiveChargeDensityArray(fssrb), sim.electric_potential.grid)
         sim.ρ_fix = EffectiveChargeDensity(FixedEffectiveChargeDensityArray(fssrb), sim.electric_potential.grid)
@@ -775,4 +775,150 @@ Calculates the capacitance of an detector in Farad.
 function calculate_capacitance(sim::Simulation{T}) where {T <: SSDFloat}
     W = calculate_stored_energy(sim)
     return uconvert(u"pF", 2 * W / (_get_abs_bias_voltage(sim.detector)^2))
+end
+
+
+function set_pointtypes_and_fixed_potentials!(pointtypes::Array{PointType, N}, potential::Array{T, N},
+        grid::Grid{T, N, :cylindrical}, sim::Simulation{T}; weighting_potential_contact_id::Union{Missing, Int} = missing)::Nothing where {T <: SSDFloat, N}
+
+    ssd = sim.detector
+    channels::Array{Int, 1} = if !ismissing(weighting_potential_contact_id)
+        [weighting_potential_contact_id]
+    else
+        Int[]
+    end
+
+    axr::Vector{T} = grid.axes[1].ticks
+    axφ::Vector{T} = grid.axes[2].ticks
+    axz::Vector{T} = grid.axes[3].ticks
+
+    for iz in axes(potential, 3)
+        z::T = axz[iz]
+        for iφ in axes(potential, 2)
+            φ::T = axφ[iφ]
+            for ir in axes(potential, 1)
+                r::T = axr[ir]
+                pt::CylindricalPoint{T} = CylindricalPoint{T}( r, φ, z )
+
+                for passive in ssd.passives
+                    if passive.potential != :floating
+                        if pt in passive
+                            potential[ ir, iφ, iz ] = if ismissing(weighting_potential_contact_id)
+                                passive.potential
+                            else
+                                0
+                            end
+                            pointtypes[ ir, iφ, iz ] = zero(PointType)
+                        end
+                    end
+                end
+                if in(pt, ssd)
+                    pointtypes[ ir, iφ, iz ] += pn_junction_bit
+                end
+                for contact in ssd.contacts
+                    if pt in contact
+                        potential[ ir, iφ, iz ] = if ismissing(weighting_potential_contact_id)
+                            contact.potential
+                        else
+                            contact.id == weighting_potential_contact_id ? 1 : 0
+                        end
+                        pointtypes[ ir, iφ, iz ] = zero(PointType)
+                    end
+                end
+            end
+        end
+    end
+
+    for contact in ssd.contacts
+        pot::T = if ismissing(weighting_potential_contact_id)
+            contact.potential
+        else
+            contact.id == weighting_potential_contact_id ? 1 : 0
+        end
+        contact_gridpoints = paint_object(ssd, contact, grid)
+        for gridpoint in contact_gridpoints
+            potential[ gridpoint... ] = pot
+            pointtypes[ gridpoint... ] = zero(PointType)
+        end   
+    end
+    if !ismissing(weighting_potential_contact_id) # undepleted regions for WeightingPotentials
+        for (ir,r) in enumerate(grid.r)
+            for (ip,p) in enumerate(grid.axes[2])
+                for (iz,z) in enumerate(grid.z)
+                    if sim.point_types[find_closest_gridpoint(CylindricalPoint{T}(r,p,z), sim.point_types.grid)...] & undepleted_bit > 0 # is undepleted
+                        potential[ir, ip, iz] = weighting_potential_contact_id == 1
+                        pointtypes[ir, ip, iz] = zero(PointType)
+                    end
+                end
+            end
+        end
+    end 
+    nothing
+end
+
+function set_pointtypes_and_fixed_potentials!(pointtypes::Array{PointType, N}, potential::Array{T, N},
+    grid::Grid{T, N, :cartesian}, sim::Simulation{T}; weighting_potential_contact_id::Union{Missing, Int} = missing)::Nothing where {T <: SSDFloat, N}
+
+    ssd = sim.detector
+    channels::Array{Int, 1} = if !ismissing(weighting_potential_contact_id)
+        [weighting_potential_contact_id]
+    else
+        Int[]
+    end
+
+    axx::Vector{T} = grid.axes[1].ticks
+    axy::Vector{T} = grid.axes[2].ticks
+    axz::Vector{T} = grid.axes[3].ticks
+
+    for iz in axes(potential, 3)
+        z::T = axz[iz]
+        for iy in axes(potential, 2)
+            y::T = axy[iy]
+            for ix in axes(potential, 1)
+                x::T = axx[ix]
+                pt::CartesianPoint{T} = CartesianPoint{T}( x, y, z )
+
+                for passive in ssd.passives
+                    if passive.potential != :floating
+                        if pt in passive
+                            potential[ ix, iy, iz ] = if ismissing(weighting_potential_contact_id)
+                                passive.potential
+                            else
+                                0
+                            end
+                            pointtypes[ ix, iy, iz ] = zero(PointType)
+                        end
+                    end
+                end
+                if in(pt, ssd)
+                    pointtypes[ ix, iy, iz ] += pn_junction_bit
+                end
+                for contact in ssd.contacts
+                    if pt in contact
+                        potential[ ix, iy, iz ] = if ismissing(weighting_potential_contact_id)
+                            contact.potential
+                        else
+                            contact.id == weighting_potential_contact_id ? 1 : 0
+                        end
+                        pointtypes[ ix, iy, iz ] = zero(PointType)
+                    end
+                end
+            end
+        end
+    end
+    for contact in ssd.contacts
+        pot::T = if ismissing(weighting_potential_contact_id)
+            contact.potential
+        else
+            contact.id == weighting_potential_contact_id ? 1 : 0
+        end
+        if !(haskey(ENV, "SSD_DISABLE_PAINTING"))
+            contact_gridpoints = paint_object(ssd, contact,grid)
+            for gridpoint in contact_gridpoints
+                potential[ gridpoint... ] = pot
+                pointtypes[ gridpoint... ] = zero(PointType)
+            end
+        end
+    end
+    nothing
 end
