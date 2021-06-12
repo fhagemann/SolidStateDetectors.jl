@@ -115,11 +115,14 @@ function _drift_charge!(
             current_pos::CartesianPoint{T} = drift_path[istep - 1]
             stepvector::CartesianVector{T} = get_velocity_vector(velocity_field, _convert_vector(current_pos, Val(S))) * Δt
             stepvector = modulate_driftvector(stepvector, current_pos, det.virtual_drift_volumes)
-            if geom_round.(stepvector) == null_step
+            if geom_round.(stepvector) == null_step 
                 done = true
             end
             next_pos::CartesianPoint{T} = current_pos + stepvector
             next_pos_cyl::CylindricalPoint{T} = CylindricalPoint(next_pos)
+            if point_types[find_closest_gridpoint(next_pos_cyl, grid)...] & undepleted_bit > 0 #if ends in an undepleted area
+                done = true
+            end
             if _is_next_point_in_det(next_pos, next_pos_cyl, det, point_types)
                 drift_path[istep] = next_pos
                 drifttime += Δt
