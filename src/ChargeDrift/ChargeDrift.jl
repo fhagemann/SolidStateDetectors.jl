@@ -182,7 +182,7 @@ function _check_and_update_position!(
         )::Nothing where {T <: SSDFloat, S}
         
     for n in eachindex(normal)
-        done[n] = current_pos[n] == current_pos[n] + step_vectors[n]
+        done[n] = (current_pos[n] == current_pos[n] + step_vectors[n])
         normal[n] = done[n] || _is_next_point_in_det(current_pos[n]+step_vectors[n], det, point_types)
     end
     
@@ -235,6 +235,12 @@ function _check_and_update_position!(
     nothing
 end
 
+function _trap_charges!(done::Vector{Bool}, normal::Vector{Bool}, Δt::T, τ::T)::Nothing where {T <: SSDFloat}
+    for n in eachindex(done)
+        done[n] = done[n] || (rand(T) > exp( -Δt / τ ))
+    end
+    nothing
+end
 
 function _drift_charge!(
                             drift_path::Array{CartesianPoint{T},2},
@@ -288,6 +294,14 @@ function _drift_charge!(
         zero(T)
     end
 
+    τ::T = if CC == Electron 
+        haskey(det.semiconductor.material, :lifetime_electrons) ? _parse_value(T, det.semiconductor.material.lifetime_electrons, u"s") : zero(T)
+    else
+        haskey(det.semiconductor.material, :lifetime_holes) ? _parse_value(T, det.semiconductor.material.lifetime_holes, u"s") : zero(T)
+    end
+    lifetime::Bool = τ > 0
+    verbose && lifetime && @info "Simulation with a $(CC) lifetime of $(τ)s."
+    
     last_real_step_index::Int = 1
     current_pos::Vector{CartesianPoint{T}} = deepcopy(startpos)
     step_vectors::Vector{CartesianVector{T}} = Vector{CartesianVector{T}}(undef, n_hits)
@@ -296,6 +310,7 @@ function _drift_charge!(
     
     @inbounds for istep in 2:max_nsteps
         last_real_step_index += 1
+        lifetime && _trap_charges!(done, normal, Δt, τ)
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, done, electric_field, det, S)
         self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r)
