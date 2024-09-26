@@ -244,7 +244,7 @@ function searchsortednearest(ax::DiscreteAxis{T, :periodic, :periodic}, x::T)::I
 
 end
 
-function DiscreteAxis(nt::NamedTuple; unit = u"m/m")
+function DiscreteAxis(nt::NamedTuple; unit = Unitful.NoUnits)
     T = typeof(ustrip(nt.knots[1]))
     knots::Vector{T} = convert(Vector{T}, ustrip.(uconvert.(unit, nt.knots)))
     lep::T = ustrip(uconvert.(unit, nt.interval.left_boundary.endpoint ))
@@ -255,9 +255,9 @@ function DiscreteAxis(nt::NamedTuple; unit = u"m/m")
     )
 end
 
-Base.convert(T::Type{DiscreteAxis}, x::NamedTuple; unit = u"m/m") = T(x)
+Base.convert(T::Type{DiscreteAxis}, x::NamedTuple; unit = Unitful.NoUnits) = T(x)
 
-function NamedTuple(ax::DiscreteAxis{T, BL, BR}; unit = u"m/m") where {T, BL, BR}
+function NamedTuple(ax::DiscreteAxis{T, BL, BR}; unit = Unitful.NoUnits) where {T, BL, BR}
     int::Interval = ax.interval
     int_types::Tuple{Symbol, Symbol} = get_boundary_types(int)
     return (
@@ -277,7 +277,7 @@ function NamedTuple(ax::DiscreteAxis{T, BL, BR}; unit = u"m/m") where {T, BL, BR
     )
 end
 
-Base.convert(T::Type{NamedTuple}, x::DiscreteAxis; unit = u"m/m") = T(x)
+Base.convert(T::Type{NamedTuple}, x::DiscreteAxis; unit = Unitful.NoUnits) = T(x)
 
 function merge_closest_ticks!(v::AbstractVector{T}, n::Int = length(v); min_diff::T = T(1e-6)) where {T}
     n == 1 && return n

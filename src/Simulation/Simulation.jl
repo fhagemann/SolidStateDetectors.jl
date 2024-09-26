@@ -79,11 +79,11 @@ end
 Base.convert(T::Type{NamedTuple}, x::Simulation) = T(x)
 
 function Simulation(nt::NamedTuple)
-    missing_tuple = NamedTuple(missing)
+    missing_tuple = _namedtuple(missing)
     if nt.electric_potential !== missing_tuple
         epot = ElectricPotential(nt.electric_potential)
         T = eltype(epot.data)
-        sim = Simulation{T}( Dict(nt.detector_json_string) )
+        sim = Simulation{T}( _dict(nt.detector_json_string) )
         sim.electric_potential = epot
         sim.q_eff_imp = EffectiveChargeDensity(nt.q_eff_imp)
         sim.q_eff_fix = EffectiveChargeDensity(nt.q_eff_fix)
@@ -104,7 +104,7 @@ function Simulation(nt::NamedTuple)
         sim.electric_field = haskey(nt, :electric_field) && nt.electric_field !== missing_tuple ? ElectricField(nt.electric_field) : missing
     else
         T = Float32
-        sim = Simulation{T}( Dict(nt.detector_json_string) )
+        sim = Simulation{T}( _dict(nt.detector_json_string) )
     end
     sim.weighting_potentials = if haskey(nt, :weighting_potentials) 
         [let wp = Symbol("WeightingPotential_$(contact.id)")
