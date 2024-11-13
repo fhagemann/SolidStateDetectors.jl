@@ -67,7 +67,7 @@ This is a `Torus` with `r_tube` having an inner radius of 1 and an outer radius 
 
 See also [Constructive Solid Geometry (CSG)](@ref).
 """
-struct Torus{T,CO,TR,TP<:Union{Nothing,T},TT,TT1,TT2} <: AbstractVolumePrimitive{T,CO}
+struct Torus{T,CO,TR<:Union{T,Tuple{T,T}},TP<:Union{Nothing,T},TT<:Union{Nothing,Tuple{T,T}},TT1,TT2} <: AbstractVolumePrimitive{T,CO}
     r_torus::T
     r_tube::TR  # (r_tube_in, r_tube_out)
     φ::TP 

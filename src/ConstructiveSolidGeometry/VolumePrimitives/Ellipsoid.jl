@@ -47,7 +47,7 @@ This is a sphere with inner radius 1 and outer radius 2.
 
 See also [Constructive Solid Geometry (CSG)](@ref).
 """
-struct Ellipsoid{T,CO,TR,TP,TT} <: AbstractVolumePrimitive{T, CO}
+struct Ellipsoid{T,CO,TR,TP<:Nothing,TT<:Nothing} <: AbstractVolumePrimitive{T, CO}
     r::TR 
     φ::TP 
     θ::TT 
@@ -81,7 +81,7 @@ function Ellipsoid{T}(::Type{CO}=ClosedPrimitive;
     r = 1.0, 
     origin = zero(CartesianPoint{Float64}), 
     rotation = one(SMatrix{3, 3, Float64, 9})
-) where {T, CO}
+) where {T <: AbstractFloat, CO}
     Ellipsoid{T,CO}( r, origin, rotation)
 end
 
@@ -94,7 +94,7 @@ const Sphere{T,CO,TP,TT} = Ellipsoid{T,CO,T,TP,TT}
 const FullSphere{T,CO} = Ellipsoid{T,CO,T,Nothing,Nothing}
 const FullEllipsoid{T,CO} = Ellipsoid{T,CO,NTuple{3,T},Nothing,Nothing}
 
-function Geometry(::Type{T}, ::Type{Ellipsoid}, dict::AbstractDict, input_units::NamedTuple, transformations::Transformations{T}) where {T}
+function Geometry(::Type{T}, ::Type{Ellipsoid}, dict::AbstractDict, input_units::NamedTuple, transformations::Transformations{T}) where {T <: AbstractFloat}
     length_unit = input_units.length
     angle_unit = input_units.angle
     origin = get_origin(T, dict, length_unit)

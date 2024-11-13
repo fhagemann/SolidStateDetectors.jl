@@ -73,7 +73,7 @@ from 2 at the bottom to 4 at the top circular base.
     
 See also [Constructive Solid Geometry (CSG)](@ref).
 """
-struct Cone{T,CO,TR,TP<:Union{Nothing,T}} <: AbstractVolumePrimitive{T, CO}
+struct Cone{T,CO,TR<:Union{T,Tuple{T,T},Tuple{Tuple{T},Tuple{T}},Tuple{Tuple{T,T},Tuple{T,T}},Tuple{Nothing,Tuple{T,T}},Tuple{Tuple{T,T},Nothing}},TP<:Union{Nothing,T}} <: AbstractVolumePrimitive{T, CO}
     r::TR 
     φ::TP
     hZ::T 
