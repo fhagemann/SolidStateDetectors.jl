@@ -25,7 +25,7 @@ of the materials) will be used as input to the calculation of [`ElectricPotentia
 
 See also [`Semiconductor`](@ref), [`Contact`](@ref), [`Passive`](@ref) and [`DeadVolume`](@ref).
 """
-struct SolidStateDetector{T,SC,CT,PT,VDM} <: AbstractConfig{T}
+struct SolidStateDetector{T<:SSDFloat,SC<:AbstractSemiconductor{T},CT,PT,VDM} <: AbstractConfig{T}
     name::AbstractString # optional
     semiconductor::SC
     contacts::CT

@@ -1,5 +1,5 @@
 
-abstract type AbstractContact{T} <: AbstractObject{T} end
+abstract type AbstractContact{T <: SSDFloat} <: AbstractObject{T} end
 
 """
     struct Contact{T, G, MT} <: AbstractContact{T}
@@ -40,7 +40,7 @@ contacts:
     geometry: # ....
 ```
 """
-struct Contact{T,G,MT} <: AbstractContact{T}
+struct Contact{T<:SSDFloat,G<:AbstractGeometry{T},MT<:NamedTuple} <: AbstractContact{T}
     potential::T
     material::MT
     id::Int

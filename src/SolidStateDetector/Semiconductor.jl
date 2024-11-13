@@ -1,4 +1,4 @@
-abstract type AbstractSemiconductor{T} <: AbstractObject{T} end
+abstract type AbstractSemiconductor{T <: SSDFloat} <: AbstractObject{T} end
 
 """
     struct Semiconductor{T,G,MT,CDM,IDM,CTM} <: AbstractSemiconductor{T}
@@ -39,7 +39,7 @@ semiconductor:
   geometry: # ...
 ```
 """
-struct Semiconductor{T,G,MT,CDM,IDM,CTM} <: AbstractSemiconductor{T}
+struct Semiconductor{T,G<:AbstractGeometry{T},MT<:NamedTuple,CDM<:AbstractChargeDriftModel{T},IDM<:AbstractImpurityDensity{T},CTM<:AbstractChargeTrappingModel{T}} <: AbstractSemiconductor{T}
     temperature::T
     material::MT
     impurity_density_model::IDM
@@ -48,7 +48,7 @@ struct Semiconductor{T,G,MT,CDM,IDM,CTM} <: AbstractSemiconductor{T}
     geometry::G
 end
 
-function Semiconductor{T}(dict::AbstractDict, input_units::NamedTuple, outer_transformations) where T <: SSDFloat
+function Semiconductor{T}(dict::AbstractDict, input_units::NamedTuple, outer_transformations) where {T <: SSDFloat}
 
     impurity_density_model = if haskey(dict, "impurity_density") 
         ImpurityDensity(T, dict["impurity_density"], input_units)
@@ -105,7 +105,7 @@ function println(io::IO, d::Semiconductor{T}) where {T <: SSDFloat}
     end
 end
 
-print(io::IO, d::Semiconductor{T}) where {T} = print(io, "Semiconductor{$T} - $(d.material.name)")
+print(io::IO, d::Semiconductor{T}) where {T <: SSDFloat} = print(io, "Semiconductor{$T} - $(d.material.name)")
 
 show(io::IO, d::Semiconductor) = print(io, d)
 show(io::IO,::MIME"text/plain", d::Semiconductor) = show(io, d)
@@ -136,7 +136,7 @@ a very high value should be returned in order to mimic perfect conductivity if t
     This feature is under research. The goal is to study the properties / signal response of undepleted detector. 
     This function is indented to be overwritten by the user to study the response. 
 """
-function scaling_factor_for_permittivity_in_undepleted_region(sc::Semiconductor{T})::T where {T}
-    100000
+function scaling_factor_for_permittivity_in_undepleted_region(sc::Semiconductor{T})::T where {T <: SSDFloat}
+    T(100000)
 end
 

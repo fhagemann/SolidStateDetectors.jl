@@ -1,6 +1,6 @@
 abstract type AbstractObject{T <: SSDFloat} end
 
-@inline function in(pt::AbstractCoordinatePoint{T}, c::AbstractObject{T})::Bool where {T}
+@inline function in(pt::AbstractCoordinatePoint{T}, c::AbstractObject{T})::Bool where {T <: SSDFloat}
     return in(pt, c.geometry)
 end
 

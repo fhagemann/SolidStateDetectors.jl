@@ -1,4 +1,4 @@
-abstract type AbstractWorld{T, N} end
+abstract type AbstractWorld{T<:SSDFloat, N} end
 
 """
     struct SSDInterval{T <: SSDFloat, L, R, BL, BR} <: IntervalSets.TypedEndpointsInterval{L,R,T}
@@ -53,7 +53,7 @@ Definition of the finite volume on which a [`Simulation`](@ref) is performed.
 ## Fields 
 * `intervals::NTuple{N, SSDInterval{T}}`: A set of [`SSDInterval`](@ref) defining the dimensions of the world.
 """
-struct World{T <: SSDFloat, N, S} <: AbstractWorld{T, N} 
+struct World{T <: SSDFloat, N, S<:AbstractCoordinateSystem} <: AbstractWorld{T, N} 
     intervals::NTuple{N, SSDInterval{T}}
 end
 
@@ -62,7 +62,7 @@ function World{T, N, S}(args...) where {T <: SSDFloat, N, S}
 end
 
 
-function World(T, dict::AbstractDict, input_units::NamedTuple)::World
+function World(::Type{T}, dict::AbstractDict, input_units::NamedTuple)::World where {T <: SSDFloat}
     if dict["coordinates"] == "cylindrical"
         CylindricalWorld(T, dict["axes"], input_units)
     elseif dict["coordinates"] == "cartesian"
@@ -101,7 +101,7 @@ function is_periodic_plus_mirror_symmetric(BL::Symbol, BR::Symbol)::Bool
     return (BL == :periodic && BR == :reflecting) || (BL == :reflecting && BR == :periodic)
 end
 
-function get_r_SSDInterval(T, dict, input_units::NamedTuple)
+function get_r_SSDInterval(::Type{T}, dict, input_units::NamedTuple) where {T <: SSDFloat}
     if isa(dict, AbstractDict)
         from::T = 0 
         if "from" in keys(dict) @warn "ConfigFileWarning: \"from\" is not used in r-axis. It is fixed to 0." end
@@ -118,7 +118,7 @@ function get_r_SSDInterval(T, dict, input_units::NamedTuple)
         SSDInterval{T, :closed, :closed, :r0, :infinite}(0, _parse_value(T, dict, input_units.length))
     end
 end
-function get_φ_SSDInterval(T, dict::AbstractDict, input_units::NamedTuple)
+function get_φ_SSDInterval(::Type{T}, dict::AbstractDict, input_units::NamedTuple) where {T <: SSDFloat}
     if haskey(dict, "phi")
         dp = dict["phi"]
         from::T = "from" in keys(dp) ?  _parse_value(T, dp["from"], input_units.angle) : T(0)
@@ -143,7 +143,7 @@ function get_φ_SSDInterval(T, dict::AbstractDict, input_units::NamedTuple)
     end
 end
 
-function get_cartesian_SSDInterval(T, dict::AbstractDict, input_units::NamedTuple)
+function get_cartesian_SSDInterval(::Type{T}, dict::AbstractDict, input_units::NamedTuple) where {T <: SSDFloat}
     from::T = "from" in keys(dict) ? _parse_value(T, dict["from"], input_units.length) : 0
     to = "to" in keys(dict) ? _parse_value(T, dict["to"], input_units.length) : throw(ConfigFileError("No \"to\" given for z-axis."))
     L = :closed
@@ -158,7 +158,7 @@ function get_cartesian_SSDInterval(T, dict::AbstractDict, input_units::NamedTupl
 end
 
 
-function CylindricalWorld(T, dict::AbstractDict, input_units::NamedTuple)::World
+function CylindricalWorld(::Type{T}, dict::AbstractDict, input_units::NamedTuple)::World where {T <: SSDFloat}
     r_int = get_r_SSDInterval(T, dict["r"], input_units)
     φ_int = get_φ_SSDInterval(T, dict, input_units)
     z_int = get_cartesian_SSDInterval(T, dict["z"], input_units)
@@ -166,7 +166,7 @@ function CylindricalWorld(T, dict::AbstractDict, input_units::NamedTuple)::World
 end
 
 
-function CartesianWorld(T, dict::AbstractDict, input_units::NamedTuple)::World
+function CartesianWorld(::Type{T}, dict::AbstractDict, input_units::NamedTuple)::World where {T <: SSDFloat}
     x_int = get_cartesian_SSDInterval(T, dict["x"], input_units)
     y_int = get_cartesian_SSDInterval(T, dict["y"], input_units)
     z_int = get_cartesian_SSDInterval(T, dict["z"], input_units)
@@ -198,11 +198,11 @@ function World(::Type{Cartesian}, limits::NTuple{6, T})::World where {T <: SSDFl
     return CartesianWorld(limits...)
 end
 
-function max_tick_distance_default(w::World{T, 3, Cylindrical}; n = 50) where {T}
+function max_tick_distance_default(w::World{T, 3, Cylindrical}; n = 50) where {T <: SSDFloat}
     Δw = width.(w.intervals)
     return max(Δw[1], Δw[3]) * internal_length_unit / n
 end
-function max_tick_distance_default(w::World{T, 3, Cartesian}; n = 50) where {T}
+function max_tick_distance_default(w::World{T, 3, Cartesian}; n = 50) where {T <: SSDFloat}
     Δw = width.(w.intervals)
     return max(Δw...) * internal_length_unit / n
 end

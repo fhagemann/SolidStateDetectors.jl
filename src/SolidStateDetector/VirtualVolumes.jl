@@ -1,4 +1,4 @@
-abstract type AbstractVirtualVolume{T} end
+abstract type AbstractVirtualVolume{T <: SSDFloat} end
 
 in(pt::AbstractCoordinatePoint{T}, avv::AbstractVirtualVolume{T}) where {T <: SSDFloat} = in(pt, avv.geometry)
 
@@ -35,7 +35,7 @@ virtual_drift_volume:
     geometry: # ...
 ```
 """
-struct DeadVolume{T, G} <: AbstractVirtualVolume{T}
+struct DeadVolume{T<:SSDFloat,G<:AbstractGeometry{T}} <: AbstractVirtualVolume{T}
     name::String
     geometry::G
 end

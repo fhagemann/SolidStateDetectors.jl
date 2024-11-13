@@ -1,4 +1,4 @@
-abstract type AbstractPassive{T} <: AbstractObject{T} end
+abstract type AbstractPassive{T <: SSDFloat} <: AbstractObject{T} end
 
 """
     struct Passive{T,G,MT,CDM} <: AbstractPassive{T}
@@ -46,7 +46,7 @@ passives:
     geometry: # ...
 ```
 """
-struct Passive{T,G,MT,CDM} <: AbstractPassive{T}
+struct Passive{T<:SSDFloat,G<:AbstractGeometry{T},MT<:NamedTuple,CDM<:AbstractChargeDensity{T}} <: AbstractPassive{T}
     name::String
     id::Int
     potential::T # NaN is floating
