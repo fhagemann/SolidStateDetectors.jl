@@ -93,7 +93,7 @@ function estimate_depletion_voltage(sim::Simulation{T},
 
     ϕρ .-= simDV.detector.contacts[contact_id].potential .* ϕV
     Urng = Umin..Umax
-    inside = findall(simDV.point_types .& 4 .> 0)
+    inside = findall(simDV.point_types .& pn_junction_bit .> 0)
     U::T = NaN
     ϕ̃ = similar(ϕV)
     while Umax-Umin>tolerance
@@ -112,7 +112,7 @@ function estimate_depletion_voltage(sim::Simulation{T},
     U2 = isempty(U_min_max) ? U : only(U_min_max)    
     U = U > 0 ? max(U, U2) : min(U, U2)
     if verbose
-        @info "The depletion voltage is around $(round(U, digits = Int(ceil(-log10(tolerance))))) ± $(tolerance) V applied to contact $(contact_id)."
+        @info "The depletion voltage is around $(round(U, digits = Int(ceil(-log10(tolerance))))) V applied to contact $(contact_id)."
         if (potential_range[2] - U) < tolerance || (U - potential_range[1]) < tolerance
             @warn "The depletion voltage is probably not in the specified range $(potential_range.*u"V")."
         end
