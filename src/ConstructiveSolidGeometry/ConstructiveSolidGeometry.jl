@@ -122,8 +122,9 @@ module ConstructiveSolidGeometry
     # u"deg" will be defined when explicitly calling
     # using SolidStateDetectors.ConstructiveSolidGeometry.CSGUnits
     module CSGUnits 
-        using Unitful
-        const deg = Unitful.°
+        import Unitful
+        # const deg = Unitful.°
+        @unit deg "deg" Unitful.° 1u"°" false
         const localunits = Unitful.basefactors
         function __init__()
             merge!(Unitful.basefactors, localunits)
