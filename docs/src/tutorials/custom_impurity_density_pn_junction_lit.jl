@@ -18,6 +18,7 @@
 # Let's get started by loading the packages and the detector and have a look at its geometry:
 
 using Plots
+gr(fmt = :png) #hide
 using SolidStateDetectors
 using Unitful
 
