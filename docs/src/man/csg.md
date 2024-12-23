@@ -13,6 +13,7 @@ can be specified in the configuration files.
 using SolidStateDetectors
 import SolidStateDetectors.ConstructiveSolidGeometry as CSG
 using Plots
+gr(fmt = :png) #hide
 T = Float64;
 nothing #hide
 ````

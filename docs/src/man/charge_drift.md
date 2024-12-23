@@ -275,11 +275,15 @@ Electron and hole clouds can be easily constructed using [`NBodyChargeCloud`](@r
 
 One way of defining an [`NBodyChargeCloud`](@ref) is having a center point charge surrounded by shells with point charges on the vertices of platonic solids. For now, all shells will have the same number of charges and be oriented the same way.
 
-````@example NBodyChargeCloud
+````@setup NBodyChargeCloud
 using SolidStateDetectors #hide
 using Unitful #hide
 using Plots #hide
+gr(fmt = :png) #hide
 T = Float64 #hide
+````
+
+````@example NBodyChargeCloud
 center = CartesianPoint{T}([0,0,0])
 energy = 1460u"keV"
 nbcc = NBodyChargeCloud(center, energy)

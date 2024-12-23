@@ -7,7 +7,7 @@ First, we have to calculate something in order to demonstrate the plotting tools
 using Plots
 using SolidStateDetectors
 using Unitful
-gr(fmt = :png) #hide
+gr(fmt = :png)
 
 T = Float32
 sim = Simulation{T}(SSD_examples[:InvertedCoax]);
