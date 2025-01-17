@@ -10,6 +10,7 @@ const CSG_dict = Dict{String, Any}(
     "sphere" => Ellipsoid,
     "box" => Box,
     "torus" => Torus,
+    "polycone" => Polycone,
     "TriangularPrism" => TriangularPrism,
     "QuadranglePrism" => QuadranglePrism,
     "PentagonalPrism" => PentagonalPrism,
