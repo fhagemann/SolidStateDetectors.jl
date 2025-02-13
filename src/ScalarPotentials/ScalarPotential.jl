@@ -98,10 +98,10 @@ end
 function extend_2D_to_3D_by_n_points(sp::ScalarPotential{T, 3, Cylindrical}, axφ::DiscreteAxis{AT, :reflecting, :reflecting}, int::Interval{:closed, :closed, AT},
         n_points_in_φ::Int ) where {T, AT}
     new_int::Interval{:closed, :open, AT} = Interval{:closed, :open, AT}(0, 2π)
-    new_ticks::Vector{AT} = Vector{AT}(undef, n_points_in_φ)
-    new_pot = Array{eltype(sp.data), 3}(undef, size(sp, 1), n_points_in_φ, size(sp, 3))
+    new_ticks::Vector{AT} = similar(axφ.ticks, n_points_in_φ)
+    new_pot::Array{eltype(sp.data), 3} = similar(sp.data, size(sp, 1), n_points_in_φ, size(sp, 3))
     Δφ::AT = 2π / n_points_in_φ
-    for i in 1:n_points_in_φ
+    for i in eachindex(new_ticks)
         new_ticks[i] = (i - 1) * Δφ
         new_pot[:, i, :] = sp[:, 1, :]
     end

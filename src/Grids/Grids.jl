@@ -1,4 +1,4 @@
-abstract type AbstractGrid{T, N} <: AbstractArray{T, N} end
+abstract type AbstractGrid{T <: SSDFloat, N} end
 
 """
     struct Grid{T, N, S <: AbstractCoordinateSystem, AT} <: AbstractGrid{T, N}
@@ -26,84 +26,72 @@ const CartesianGrid1D{T} = CartesianGrid{T, 1}
 const CartesianGrid2D{T} = CartesianGrid{T, 2}
 const CartesianGrid3D{T} = CartesianGrid{T, 3}
 const CylindricalGrid{T} = Grid{T, 3, Cylindrical}
-#const RadialGrid{T} = Grid{T, 1, Radial}
-#const PolarGrid{T} = Grid{T, 2, Polar}
-#const SphericalGrid{T} = Grid{T, 3, Spherical}
 
 CylindricalGrid{T}(a) where {T} = Grid{T, 3, Cylindrical, typeof(a)}(a)
 CartesianGrid3D{T}(a) where {T} = Grid{T, 3, Cartesian, typeof(a)}(a)
 
-@inline size(grid::Grid{T, N, S}) where {T, N, S} = size.(grid.axes, 1)
-@inline length(grid::Grid{T, N, S}) where {T, N, S} = prod(size(grid))
-@inline getindex(grid::Grid{T, N, S}, I::Vararg{Int, N}) where {T, N, S} = broadcast(getindex, grid.axes, I)
-@inline getindex(grid::Grid{T, N, S}, i::Int) where {T, N, S} = getproperty(grid, :axes)[i]
-@inline getindex(grid::Grid{T, N, S}, s::Symbol) where {T, N, S} = getindex(grid, Val{s}())
+@inline Base.size(grid::Grid) = size.(grid.axes, 1)
+@inline Base.size(grid::Grid, i::Int) = size(grid.axes[i], 1)
+@inline Base.length(grid::Grid) = prod(size(grid))
+@inline Base.getindex(grid::Grid{<:Any, N}, I::Vararg{Int, N}) where {N} = broadcast(getindex, grid.axes, I)
+@inline Base.getindex(grid::Grid, i::Int) = getproperty(grid, :axes)[i]
+@inline Base.getindex(grid::Grid, s::Symbol) = getindex(grid, Val{s}())
 
-@inline getproperty(grid::Grid{T, N, S}, s::Symbol) where {T, N, S} = getproperty(grid, Val{s}())
-@inline getproperty(grid::Grid{T}, ::Val{:axes}) where {T} = getfield(grid, :axes)
+@inline Base.getproperty(grid::Grid, s::Symbol) = getproperty(grid, Val{s}())
+@inline Base.getproperty(grid::Grid, ::Val{:axes}) = getfield(grid, :axes)
 
-@inline getproperty(grid::CylindricalGrid{T}, ::Val{:axes}) where {T} = getfield(grid, :axes)
-@inline getproperty(grid::CylindricalGrid{T}, ::Val{:r}) where {T} = @inbounds grid.axes[1]
-@inline getproperty(grid::CylindricalGrid{T}, ::Val{:φ}) where {T} = @inbounds grid.axes[2]
-@inline getproperty(grid::CylindricalGrid{T}, ::Val{:z}) where {T} = @inbounds grid.axes[3]
-@inline getproperty(grid::CartesianGrid3D{T}, ::Val{:x}) where {T} = @inbounds grid.axes[1]
-@inline getproperty(grid::CartesianGrid3D{T}, ::Val{:y}) where {T} = @inbounds grid.axes[2]
-@inline getproperty(grid::CartesianGrid3D{T}, ::Val{:z}) where {T} = @inbounds grid.axes[3]
+@inline Base.getproperty(grid::CylindricalGrid, ::Val{:axes}) = getfield(grid, :axes)
+@inline Base.getproperty(grid::CylindricalGrid, ::Val{:r}) = @inbounds grid.axes[1]
+@inline Base.getproperty(grid::CylindricalGrid, ::Val{:φ}) = @inbounds grid.axes[2]
+@inline Base.getproperty(grid::CylindricalGrid, ::Val{:z}) = @inbounds grid.axes[3]
+@inline Base.getproperty(grid::CartesianGrid3D, ::Val{:x}) = @inbounds grid.axes[1]
+@inline Base.getproperty(grid::CartesianGrid3D, ::Val{:y}) = @inbounds grid.axes[2]
+@inline Base.getproperty(grid::CartesianGrid3D, ::Val{:z}) = @inbounds grid.axes[3]
 
-@inline getindex(grid::CylindricalGrid{T}, ::Val{:r}) where {T} = @inbounds grid.axes[1]
-@inline getindex(grid::CylindricalGrid{T}, ::Val{:φ}) where {T} = @inbounds grid.axes[2]
-@inline getindex(grid::CylindricalGrid{T}, ::Val{:z}) where {T} = @inbounds grid.axes[3]
-@inline getindex(grid::CartesianGrid3D{T}, ::Val{:x}) where {T} = @inbounds grid.axes[1]
-@inline getindex(grid::CartesianGrid3D{T}, ::Val{:y}) where {T} = @inbounds grid.axes[2]
-@inline getindex(grid::CartesianGrid3D{T}, ::Val{:z}) where {T} = @inbounds grid.axes[3]
+@inline Base.getindex(grid::CylindricalGrid, ::Val{:r}) = @inbounds grid.axes[1]
+@inline Base.getindex(grid::CylindricalGrid, ::Val{:φ}) = @inbounds grid.axes[2]
+@inline Base.getindex(grid::CylindricalGrid, ::Val{:z}) = @inbounds grid.axes[3]
+@inline Base.getindex(grid::CartesianGrid3D, ::Val{:x}) = @inbounds grid.axes[1]
+@inline Base.getindex(grid::CartesianGrid3D, ::Val{:y}) = @inbounds grid.axes[2]
+@inline Base.getindex(grid::CartesianGrid3D, ::Val{:z}) = @inbounds grid.axes[3]
 
 @inline GridPoint(grid::Grid{T, 3, Cylindrical}, inds::NTuple{3, Int}) where {T} = 
     CylindricalPoint{T}(broadcast(i -> grid.axes[i].ticks[inds[i]], (1, 2, 3)))
 @inline GridPoint(grid::Grid{T, 3, Cartesian}, inds::NTuple{3, Int}) where {T} = 
     CartesianPoint{T}(broadcast(i -> grid.axes[i].ticks[inds[i]], (1, 2, 3)))
 
-function sizeof(grid::Grid{T, N, S}) where {T, N, S}
-    return sum( sizeof.(grid.axes) )
-end
+Base.sizeof(grid::Grid) = sum(sizeof.(grid.axes))
 
-function print(io::IO, grid::Grid{T, N, S}) where {T, N, S}
+function Base.print(io::IO, grid::Grid{T, N, S}) where {T, N, S}
     print(io, "Grid{$T, $N, $S}", grid.axes)
 end
-function println(io::IO, grid::Grid{T, N, S}) where {T, N, S}
+function Base.println(io::IO, grid::Grid{T, N, S}) where {T, N, S}
     println(" Grid{$T, $N, $S}")
     for (i, ax) in enumerate(grid.axes)
         println(io, "  Axis $(i): ", ax)
     end
 end
-show(io::IO, grid::Grid{T, N, S}) where {T, N, S} = print(io, grid)
-show(io::IO, ::MIME"text/plain", grid::Grid{T, N, S}) where {T, N, S} = show(io, grid)
+Base.show(io::IO, grid::Grid) = print(io, grid)
+Base.show(io::IO, ::MIME"text/plain", grid::Grid) = show(io, grid)
 
-function check_grid(grid::CylindricalGrid{T})::Nothing where {T}
+function check_grid(grid::CylindricalGrid)::Nothing
     nr::Int, nφ::Int, nz::Int = size(grid)
     @assert iseven(nz) "GridError: Field simulation algorithm in cylindrical coordinates needs an even number of grid points in z. This is not the case. #z-ticks = $(nz)."
     @assert (iseven(nφ) || (nφ == 1)) "GridError: Field simulation algorithm in cylindrical coordinates needs an even number of grid points in φ or just one point (2D). This is not the case. #φ-ticks = $(nφ)."
-    return nothing
+    nothing
 end
 
-function check_grid(grid::CartesianGrid3D{T})::Nothing where {T}
-    nx::Int, ny::Int, nz::Int = size(grid)
+function check_grid(grid::CartesianGrid3D)::Nothing
+    nx::Int, _, _ = size(grid)
     @assert iseven(nx) "GridError: Field simulation algorithm in cartesian coordinates needs an even number of grid points in x. This is not the case. #x-ticks = $(nx)."
-    return nothing
+    nothing
 end
 
-function get_coordinate_system(grid::Grid{T, N, S}) where {T, N, S}
-    return S
-end
-function get_number_of_dimensions(grid::Grid{T, N, S}) where {T, N, S}
-    return N
-end
-function Base.eltype(grid::Grid{T, N, S})::DataType where {T, N, S}
-    return T
-end
-
-function get_boundary_types(grid::Grid{T, N, S}) where {T, N, S}
-   return get_boundary_types.(grid.axes)
-end
+get_coordinate_system(grid::Grid{<:Any, <:Any, S}) where {S} = S
+Base.ndims(grid::Grid{<:Any, N}) where {N} = N
+get_number_of_dimensions(grid::Grid) = ndims(grid)
+Base.eltype(grid::Grid{T}) where {T} = T
+get_boundary_types(grid::Grid) = get_boundary_types.(grid.axes)
 
 # Tuples with ticks to sample with differently spaced ticks
 const CartesianTicksTuple{T} = NamedTuple{(:x,:y,:z), NTuple{3,Vector{T}}}
