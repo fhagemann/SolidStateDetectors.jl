@@ -325,3 +325,39 @@ end
         @test cdm0.crystal_orientation == cdmdict.crystal_orientation
     end
 end
+
+@timed_testset "Test grouping of charges" begin
+    for N in 1:100
+        @testset "Test for length $(N)" begin
+            
+            # Generate random data
+            pts = [CartesianPoint{T}(rand(3)...) for _ in Base.OneTo(N)]
+            d = rand(T)
+            
+            # Evaluate method
+            result, _ = SolidStateDetectors.group_points_by_distance(pts, d)
+            
+            # Test correctness
+            s0 = Set(pts)
+
+            # result should be a VectorOfVectors
+            @test result isa VectorOfVectors{CartesianPoint{T}}
+
+            # all points should appear in the result
+            @test Set(flatview(result)) == Set(pts)
+            @test length(flatview(result)) == length(pts)
+        
+            for (i,group) in enumerate(result)
+                @testset "Length $(N), subgroup $(i)" begin
+                    sg = Set(group)
+                    sc = setdiff(s0, group)
+                    for pt in group
+                        swo = setdiff(sg, Set([pt]))
+                        @test isempty(swo) || any(SolidStateDetectors.distance_squared.(Ref(pt), swo) .<= d^2)
+                        @test all(SolidStateDetectors.distance_squared.(Ref(pt), sc) .> d^2)
+                    end
+                end
+            end
+        end
+    end
+end

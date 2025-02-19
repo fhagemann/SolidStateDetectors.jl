@@ -19,6 +19,44 @@ mutable struct Event{T <: SSDFloat}
     Event{T}() where {T <: SSDFloat} = new{T}(VectorOfArrays(Vector{CartesianPoint{T}}[]), VectorOfArrays(Vector{T}[]), missing, missing)
 end
 
+using DataStructures: CircularBuffer
+
+function group_points_by_distance(pts::AbstractVector{CartesianPoint{T}}, energies::AbstractVector{T}, group_distance::T)::Tuple{VectorOfVectors{CartesianPoint{T}}, VectorOfVectors{T}}
+    
+    n::Int = length(pts)
+    
+    # use BFS to find connected components
+    visited        = falses(n)
+    clustersidx    = similar(eachindex(pts))
+    elem_ptr       = similar(eachindex(pts), n+1)
+    queue          = DataStructures.CircularBuffer{Int}(n)
+    
+    counter        = firstindex(pts)
+    Cidx           = firstindex(elem_ptr)
+    elem_ptr[Cidx] = counter
+    
+    @inbounds for start in eachindex(pts)
+        if !visited[start]
+            push!(queue, start)
+            visited[start] = true
+            while !isempty(queue)
+                node = popfirst!(queue)
+                clustersidx[counter] = node
+                counter += 1
+                for neighbor in eachindex(pts)
+                    if !visited[neighbor] && distance_squared(pts[node], pts[neighbor]) <= group_distance^2
+                        push!(queue, neighbor)
+                        visited[neighbor] = true
+                    end
+                end
+            end
+            Cidx += 1
+            elem_ptr[Cidx] = counter
+        end
+    end
+    VectorOfVectors(pts[clustersidx], elem_ptr[begin:Cidx]), VectorOfVectors(energies[clustersidx], elem_ptr[begin:Cidx])
+end
+
 function Event(location::AbstractCoordinatePoint{T}, energy::RealQuantity = one(T))::Event{T} where {T <: SSDFloat}
     evt = Event{T}()
     evt.locations = VectorOfArrays([[CartesianPoint(location)]])
