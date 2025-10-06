@@ -48,6 +48,7 @@ import .ConstructiveSolidGeometry: sample, to_internal_units, from_internal_unit
 export CartesianPoint, CartesianVector, CylindricalPoint
 
 import Clustering
+import DataStructures
 import Distributions
 import SpecialFunctions
 import GPUArrays
@@ -58,7 +59,7 @@ import TypedTables
 
 import Base: size, sizeof, length, getindex, setindex!, axes, getproperty, broadcast,
              range, ndims, eachindex, enumerate, iterate, IndexStyle, eltype, in, convert,
-             show, print, println, display, +, -, &
+             show, print, println, display, +, -, &, *
 
 export SolidStateDetector
 export SSD_examples
@@ -68,7 +69,7 @@ export Grid, GridPoint
 export ElectricPotential, PointTypes, EffectiveChargeDensity, DielectricDistribution, WeightingPotential, ElectricField
 export apply_initial_state!
 export calculate_electric_potential!, calculate_weighting_potential!, calculate_electric_field!, calculate_drift_fields!
-export ElectricFieldChargeDriftModel, ADLChargeDriftModel, IsotropicChargeDriftModel, InactiveLayerChargeDriftModel
+export ElectricFieldChargeDriftModel, ADLChargeDriftModel, ADL2016ChargeDriftModel, IsotropicChargeDriftModel, InactiveLayerChargeDriftModel
 export LinearImpurityDensity, LinBouleImpurityDensity, LinExpBouleImpurityDensity, ThermalDiffusionLithiumDensity, PtypePNJunctionImpurityDensity
 export NoChargeTrappingModel, BoggsChargeTrappingModel, ConstantLifetimeChargeTrappingModel, CombinedChargeTrappingModel
 export get_active_volume, is_depleted, estimate_depletion_voltage
@@ -79,7 +80,8 @@ export Simulation, simulate!
 export Event, drift_charges!
 export add_baseline_and_extend_tail
 export NBodyChargeCloud
-    
+export LinBouleImpurityDensity, ParBouleImpurityDensity, LinExpBouleImpurityDensity, ParExpBouleImpurityDensity
+
 using Unitful: RealOrRealQuantity as RealQuantity
 const SSDFloat = Union{Float16, Float32, Float64}
 
