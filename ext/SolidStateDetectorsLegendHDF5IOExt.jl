@@ -53,7 +53,10 @@ function SolidStateDetectors.simulate_waveforms( mcevents::AbstractVector{<:Name
         mcevents_sub = simulate_waveforms(mcevents[evtrange], sim; Δt, max_nsteps, diffusion, self_repulsion, number_of_carriers, number_of_shells, max_interaction_distance, verbose)
 
         # LH5 can't handle CartesianPoint, turn positions into CartesianVectors which will be saved as SVectors
-        pos_vec = VectorOfVectors([p .- Ref(cartesian_zero) for p in mcevents_sub.pos])
+        #Redefine cartesian_zero to have units
+        p0 = first(first(mcevents_sub.pos))
+        cartesian_zero = zero(p0)
+        pos_vec = VectorOfVectors([collect(p .- Ref(cartesian_zero)) for p in mcevents_sub.pos])
         new_mcevents_sub = TypedTables.Table(merge(Tables.columns(mcevents_sub), (pos = pos_vec,)))
 
         LegendHDF5IO.lh5open(ofn, "w") do h5f
