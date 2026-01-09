@@ -129,3 +129,13 @@ end
     # Result should not depend whether input positions are SVector or CartesianPoint
     @test wf_static.waveform ≈ wf.waveform
 end
+
+@testset "Construct G4JLDetectors from config files" begin
+    @testset "Read from SSD config file" begin
+        fn = "test.gdml"
+        @test Geant4.G4JLDetector(SSD_examples[:InvertedCoax], fn, save_gdml = true) isa Geant4.G4JLDetector
+        @test isfile(fn)
+        @test_nowarn Geant4.G4JLDetector(fn) isa Geant4.G4JLDetector
+        rm(fn)
+    end
+end
