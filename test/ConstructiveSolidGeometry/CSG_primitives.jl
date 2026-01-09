@@ -69,6 +69,10 @@ no_translations = (rotation = one(SMatrix{3, 3, T, 9}), translation = zero(Carte
         # geometries (origin, rotation)
         cone_closed_trafo = @inferred CSG.Cone(CSG.ClosedPrimitive,r=1.0, hZ=3.0, origin=CartesianPoint{Float32}(0,0,1),rotation=SMatrix{3}(0,0,-1,0,1,0,1,0,0))#90 degree rotation arond y-axis
         cone_open_trafo = @inferred CSG.Cone(CSG.OpenPrimitive,r=1.0, hZ=3.0, origin=CartesianPoint{Float32}(0,0,1),rotation=SMatrix{3}(0,0,-1,0,1,0,1,0,0))
+        @test CSG.isClosedPrimitive(cone_closed_trafo)
+        @test !CSG.isClosedPrimitive(cone_open_trafo)
+        @test cone_closed_trafo == CSG.switchClosedOpen(cone_open_trafo)
+        @test cone_open_trafo == CSG.switchClosedOpen(cone_closed_trafo)
         @test in(CartesianPoint{Float64}(3,0,1),cone_closed_trafo)
         @test !in(CartesianPoint{Float64}(3,0,1),cone_open_trafo)
         tol=1e-8
@@ -662,17 +666,34 @@ no_translations = (rotation = one(SMatrix{3, 3, T, 9}), translation = zero(Carte
         polycone_open = CSG.Polycone(CSG.OpenPrimitive,r=Float32[0,2,4,0,0],z=Float32[0,1,2,3,0],origin=zero(CartesianPoint{Float16}),rotation=one(SMatrix{3, 3, Float16, 9}))
         @test  in(CartesianPoint{Float32}(4,0,2), polycone1)
         @test !in(CartesianPoint{Float32}(4,0,2), polycone_open)
+
+        # Points should be sorted counter-clockwise (internally)
+        dict2 = Dict("polycone" => Dict(
+            "r" => (0,0,4,2,0),
+            "z" => (0,3,2,1,0),
+        ))
+        polycone4 = Geometry(T,dict2,default_units,no_translations)
+        @test polycone3 == polycone4
+
+        # Extremum
+        e = CSG.extremum(polycone3)
+        @test all(e .>= abs.(polycone3.r)) && all(e .>= abs.(polycone3.z))
     end
     @testset "Ellipsoid" begin
         ellip1 = @inferred CSG.Ellipsoid(CSG.ClosedPrimitive,r=1f0,origin = zero(CartesianPoint{Float16}),rotation = one(SMatrix{3, 3, Float16, 9}))
         ellip2 = @inferred CSG.Ellipsoid{Float32}(r=1.0)
         @test ellip1 === ellip2
     
-        dict = Dict("sphere"   => Dict(
-                "r"       => 1.0))
+        dict = Dict("sphere" => Dict("r" => 1.0))
         ellip3 = Geometry(T,dict,default_units,no_translations)
         output = Dictionary(ellip3)
         @test dict == output
+
+        # Partial ellipsoid not supported yet
+        dict_φ = Dict("sphere" => Dict("r" => 1.0, "phi" => 3.0))
+        @test_throws Exception Geometry(T,dict_φ,default_units,no_translations)
+        dict_θ = Dict("sphere" => Dict("r" => 1.0, "theta" => 3.0))
+        @test_throws Exception Geometry(T,dict_θ,default_units,no_translations)
     
         ellip_open = @inferred CSG.Ellipsoid(CSG.OpenPrimitive,r=1f0,origin = zero(CartesianPoint{Float16}),rotation = one(SMatrix{3, 3, Float16, 9}))
         @test in(CartesianPoint{Float32}(1,0,0),ellip1)
@@ -682,6 +703,16 @@ no_translations = (rotation = one(SMatrix{3, 3, T, 9}), translation = zero(Carte
         ellip_open_trafo = @inferred CSG.Ellipsoid(CSG.OpenPrimitive,r=1.0, origin=CartesianPoint{Float64}(1/sqrt(3),1/sqrt(3),1/sqrt(3)),rotation=SMatrix{3}(0.5,sqrt(3)/2,0,-sqrt(3)/2,0.5,0,0,0,1))
         @test !in(CartesianPoint{Float64}(-1e-8,0,0),ellip_closed_trafo)
         @test in(CartesianPoint{Float64}(1e-8,0,0),ellip_open_trafo)
+
+        dict = Dict("sphere" => Dict("r" => Dict("from" => 1.0, "to" => 2.0)))
+        ellip_hollow = Geometry(T,dict,default_units,no_translations)
+        @test !in(CartesianPoint{T}(0,0,0),ellip_hollow)
+        @test in(CartesianPoint{T}(1.0,0,0),ellip_hollow)
+        @test in(CartesianPoint{T}(1.5,0,0),ellip_hollow)
+        @test in(CartesianPoint{T}(2.0,0,0),ellip_hollow)
+
+        # Extremum
+        @test CSG.extremum(ellip1) >= ellip1.r
     end
     @testset "Box" begin
         box1 = @inferred CSG.Box(CSG.ClosedPrimitive,hX=1f0, hY=2f0, hZ=1f0, origin = zero(CartesianPoint{Float16}),rotation = one(SMatrix{3, 3, Float16, 9}))
@@ -712,29 +743,31 @@ no_translations = (rotation = one(SMatrix{3, 3, T, 9}), translation = zero(Carte
         expected_distance_inside  = 0.5f0  # nearest face along x
         @test CSG.distance(pt_outside, box2) ≈ expected_distance_outside
         @test CSG.distance(pt_inside, box2) ≈ expected_distance_inside
+        # Extremum
+        e = CSG.extremum(box1)
+        @test e >= box1.hX && e >= box1.hY && e >= box1.hZ
     end
     @testset "RegularPrism" begin
         prism1 = @inferred CSG.RegularPrism{3}(CSG.ClosedPrimitive,r=1f0, hZ = 2f0)
         prism2 = @inferred CSG.RegularPrism{3,Float32}(r=1.0, hZ = 2f0)
         @test prism1 === prism2
         
-        dict = Dict("TriangularPrism"   => Dict(
-                "r"       => 1.0,
-                "h"        => 1.0))
+        dict = Dict("TriangularPrism" => Dict("r" => 1.0, "h" => 1.0))
         prism = Geometry(T,dict,default_units,no_translations)
         output = Dictionary(prism)
         @test dict == output
         
-        dict = Dict("QuadranglePrism"   => Dict(
-                "r"       => 1.0,
-                "h"      =>1.0))
+        dict = Dict("QuadranglePrism" => Dict("r" => 1.0, "h" => 1.0))
+        prism = Geometry(T,dict,default_units,no_translations)
+        output = Dictionary(prism)
+        @test dict == output
+
+        dict = Dict("PentagonalPrism" => Dict("r" => 1.0, "h" => 1.0))
         prism = Geometry(T,dict,default_units,no_translations)
         output = Dictionary(prism)
         @test dict == output
         
-        dict = Dict("HexagonalPrism"   => Dict(
-                "r"       => 1.0,
-                "h"      =>1.0))
+        dict = Dict("HexagonalPrism"  => Dict("r" => 1.0, "h" => 1.0))
         prism = Geometry(T,dict,default_units,no_translations)
         output = Dictionary(prism)
         @test dict == output
@@ -755,6 +788,10 @@ no_translations = (rotation = one(SMatrix{3, 3, T, 9}), translation = zero(Carte
         @inferred CSG.RegularPrism{4,Float32}()
         @inferred CSG.RegularPrism{5,Float32}()
         @inferred CSG.RegularPrism{6,Float32}()
+
+        # Extremum
+        e = CSG.extremum(prism_closed)
+        @test e >= prism_closed.r && e >= prism_closed.hZ
     end
     @testset "EllipsoidMantle" begin
         em = CSG.EllipsoidMantle{Float32}(r = 1f0)
