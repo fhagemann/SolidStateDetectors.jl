@@ -160,3 +160,13 @@ end
         @test map(p -> eltype(first(evts_static.pos))(r * p), flatview(evts_static.pos)) == flatview(rotated_static.pos)
     end
 end
+
+@testset "Construct G4JLDetectors from config files" begin
+    @testset "Read from SSD config file" begin
+        fn = "test.gdml"
+        @test Geant4.G4JLDetector(SSD_examples[:InvertedCoax], fn, save_gdml = true) isa Geant4.G4JLDetector
+        @test isfile(fn)
+        @test_nowarn Geant4.G4JLDetector(fn) isa Geant4.G4JLDetector
+        rm(fn)
+    end
+end
