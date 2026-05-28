@@ -16,7 +16,7 @@ function PtypePNJunctionImpurityDensity{T}(
     lithium_annealing_temperature::T,
     lithium_annealing_time::T,
     contact_with_lithium_doped::G,
-    inactive_contact_id::Int,
+    inactive_contact_id::NTuple{<:Any,Int},
     bulk_imp_model::AbstractImpurityDensity{T},
     distance_to_contact::Function = pt::AbstractCoordinatePoint{T} -> ConstructiveSolidGeometry.distance_to_surface(pt, contact_with_lithium_doped)
     ) where {T <: SSDFloat, G <: Union{<:AbstractGeometry, Nothing}}
@@ -28,8 +28,8 @@ function ImpurityDensity(T::DataType, t::Val{:PtypePNjunction}, dict::AbstractDi
     lithium_annealing_temperature = _parse_value(T, get(dict, "lithium_annealing_temperature", 623u"K"), input_units.temperature)
     lithium_annealing_time = _parse_value(T, get(dict, "lithium_annealing_time", 18u"minute"), internal_time_unit)
     contact_with_lithium_doped = get(dict, "contact_with_lithium_doped", nothing)
-    inactive_contact_id = get(dict, "doped_contact_id", -1)
-    inactive_contact_id < 1 && error("Invalid doped_contact_id: missing or misspelled key")
+    inactive_contact_id = format_contact_id(get(dict, "doped_contact_id", -1))
+    any(i -> i < 1, inactive_contact_id) && throw(ConfigFileError("Invalid doped_contact_id: missing or misspelled key"))
     bulk_imp_model = haskey(dict, "bulk_impurity_density") ? ImpurityDensity(T, dict["bulk_impurity_density"], input_units) : ConstantImpurityDensity{T}(-1e16)
     PtypePNJunctionImpurityDensity{T}(lithium_annealing_temperature, lithium_annealing_time, contact_with_lithium_doped, inactive_contact_id, bulk_imp_model)
 end
